@@ -24,7 +24,7 @@ object ScalaApp {
       .map { case (user, product, price) => (product, 1) }
       .reduceByKey(_ + _)
       .collect()
-      .sortBy(-_._2)
+      .sortBy(_._2)
     val mostPopular = productsByPopularity(0)
 
     println("Total purchases: " + numPurchases)
