@@ -3,12 +3,13 @@
 
 from pyspark import SparkContext
 import matplotlib as mpl
+mpl.use('Agg')
 import matplotlib.pyplot as plt
 import numpy as np
 
 sc = SparkContext()
 # 读取数据集
-user_data = sc.textFile("hdfs:/PATH/ml-100k/u.user")
+user_data = sc.textFile("hdfs://PATH/ml-100k/u.user")
 # 输出第1行数据
 print(user_data.first())
 # 输出前k行数据
@@ -33,8 +34,8 @@ ages = user_fields.map(lambda x: int(x[1])).collect()
 # bins: 区间数
 # normed=True: 正则化直方图
 plt.hist(ages, bins=20, color='lightblue', normed=True)
-fig = plt.gcf()
-fig.set_size_inches(16, 10)
+#fig = plt.gcf()
+#fig.set_size_inches(16, 10)
 
 # 绘制用户职业分布的条形图
 count_by_occupation = user_fields.map(lambda fields: (fields[3], 1)).reduceByKey(lambda x, y: x + y).collect()
@@ -50,12 +51,29 @@ ax.set_xticks(pos + (width / 2))
 ax.set_xticklabels(x_axis)
 plt.bar(pos, y_axis, width, color='lightblue')
 plt.xticks(rotation=30)
-fig = plt.gcf()
-fig.set_size_inches(16, 10)
+#fig = plt.gcf()
+#fig.set_size_inches(16, 10)
 
 count_by_occupation2 = user_fields.map(lambda fields: fields[3]).countByValue()
-print("Map-reduce approach:")
-print(dict(count_by_occupation2))
+print("MapReduce approach:")
+print(dict(count_by_occupation))
 print("")
 print("countByValue approach:")
-print(dict(count_by_occupation))
+print(dict(count_by_occupation2))
+
+all_occupations = user_fields.map(lambda fields: fields[3]).distinct().collect()
+all_occupations.sort()
+idx = 0
+all_occupations_dict = {}
+for o in all_occupations:
+    all_occupations_dict[o] = idx
+    idx += 1
+print("Encoding of 'doctor': %d" % all_occupations_dict['doctor'])
+print("Encoding of 'programmer': %d" % all_occupations_dict['programmer'])
+K = len(all_occupations_dict)
+# 创建长度为K的全0向量
+binary_x = np.zeros(K)
+k_programmer = all_occupations_dict['programmer']
+binary_x[k_programmer] = 1
+print("Binary feature vector: %s" % binary_x)
+print("Length of binary vector: %d" % K)

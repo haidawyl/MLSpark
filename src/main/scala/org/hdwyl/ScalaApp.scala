@@ -1,6 +1,6 @@
 package org.hdwyl
 
-import org.apache.spark.SparkContext
+import org.apache.spark.{SparkConf, SparkContext}
 import org.apache.spark.SparkContext._
 
 /**
@@ -8,7 +8,8 @@ import org.apache.spark.SparkContext._
   */
 object ScalaApp {
   def main(args: Array[String]) {
-    val sc = new SparkContext("local[2]", "First Spark App")
+    val conf = new SparkConf()
+    val sc = new SparkContext(conf)
     // 将CSV格式的原始数据转化为(user,product,price)格式的记录集
     val data = sc.textFile("data/UserPurchaseHistory.csv")
       .map(line => line.split(","))
@@ -31,5 +32,7 @@ object ScalaApp {
     println("Unique users: " + uniqueUsers)
     println("Total revenue: " + totalRevenue)
     println("Most popular product: %s with %d purchases".format(mostPopular._1, mostPopular._2))
+
+    sc.stop()
   }
 }
