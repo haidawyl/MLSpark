@@ -97,8 +97,7 @@ def assign_tod(hr):
         if hr in v:
             return k
 
-time_of_day = hour_of_day.map(lambda hr: assign_tod(hr))
-print(time_of_day.take(5))
+time_of_day = hour_of_day.map(lambda hr: assign_tod(hr)).collect()
 idx = 0
 all_times_dict = {}
 for o in time_of_day:
