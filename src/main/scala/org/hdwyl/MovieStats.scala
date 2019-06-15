@@ -44,6 +44,10 @@ object MovieStats {
       case ex: NumberFormatException => {
         return 1900 // 若数据缺失年份则将其年份设为1900
       }
+      case ex: StringIndexOutOfBoundsException => {
+        println(x)
+        return 1900 // 若数据缺失年份则将其年份设为1900
+      }
     }
   }
 }
