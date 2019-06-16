@@ -2,6 +2,7 @@
 #  -*- coding:utf-8 -*-
 
 from pyspark import SparkContext
+from pyspark.mllib.feature import Normalizer
 import matplotlib as mpl
 mpl.use('Agg')
 import matplotlib.pyplot as plt
@@ -63,3 +64,77 @@ print("Mean year of release: %d" % mean_year)
 print("Median year of release: %d" % median_year)
 # Index of '1900' after assigning median: []
 print("Index of '1900' after assigning median: %s" % np.where(years_pre_processed_array == 1900)[0])
+
+def extract_title(raw):
+    import re
+    # 该表达式找寻括号之间的非单词（数字）
+    grps = re.search("\((\w+)\)", raw)
+    if grps:
+        # 只选取标题部分，并删除末尾的空白字符
+        return raw[:grps.start()].strip()
+    else:
+        return raw
+
+raw_titles = movie_fields.map(lambda fields: fields[1])
+for raw_title in raw_titles.take(5):
+    print extract_title(raw_title)
+
+movie_titles = raw_titles.map(lambda m: extract_title(m))
+# 下面用简单空白分词法将标题分词为词
+title_terms = movie_titles.map(lambda t: t.split(" "))
+print title_terms.take(5)
+
+# 下面取回所有可能的词，以便构建一个词到序号的映射字典
+all_terms = title_terms.flatMap(lambda x: x).distinct().collect()
+# 创建一个新的字典来保存词，并分配k之1序号
+idx = 0
+all_terms_dict = {}
+for term in all_terms:
+    all_terms_dict[term] = idx
+    idx +=1
+
+# Total number of terms: 2645
+print "Total number of terms: %d" % len(all_terms_dict)
+# Index of term 'Dead': 147
+print "Index of term 'Dead': %d" % all_terms_dict['Dead']
+# Index of term 'Rooms': 1963
+print "Index of term 'Rooms': %d" % all_terms_dict['Rooms']
+
+all_terms_dict2 = title_terms.flatMap(lambda x: x).distinct().zipWithIndex().collectAsMap()
+# Index of term 'Dead': 147
+print "Index of term 'Dead': %d" % all_terms_dict2['Dead']
+# Index of term 'Rooms': 1963
+print "Index of term 'Rooms': %d" % all_terms_dict2['Rooms']
+
+# 该函数输入一个词列表，并用k之1编码类似的方式将其编码为一个scipy稀疏向量
+def create_vector(terms, term_dict):
+    from scipy import sparse as sp
+    num_terms = len(term_dict)
+    x = sp.csc_matrix((1, num_terms))
+    for t in terms:
+        if t in term_dict:
+            idx = term_dict[t]
+            x[0, idx] = 1
+    return x
+
+all_terms_bcast = sc.broadcast(all_terms_dict)
+term_vectors = title_terms.map(lambda terms: create_vector(terms, all_terms_bcast.value))
+term_vecors.take(5)
+
+# 将随机种子的值设为42，以保证每次运行的结果相同
+np.random.seed(42)
+x = np.random.randn(10)
+norm_x_2 = np.linalg.norm(x)
+normalized_x = x / norm_x_2
+print "x:\n%s" % x
+print "2-Norm of x: %2.4f" % norm_x_2
+print "Normalized x:\n%s" % normalized_x
+print "2-Norm of normalized_x: %2.4f" % np.linalg.norm(normalized_x)
+
+normalizer = Normalizer()
+vector = sc.parallelize([x])
+normalized_x_mllib = normalizer.transform(vector).first().toArray()
+print "x:\n%s" % x
+print "2-Norm of x: %2.4f" % norm_x_2
+print "Normalized x MLlib:\n%s" % normalized_x_mllib
+print "2-Norm of normalized_x_mllib: %2.4f" % np.linalg.norm(normalized_x_mllib)

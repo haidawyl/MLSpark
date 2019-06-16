@@ -1,6 +1,7 @@
 package org.hdwyl
 
 import breeze.linalg.Axis._1
+import org.apache.log4j.Logger
 import org.apache.spark.{SparkConf, SparkContext}
 import org.apache.spark.SparkContext._
 
@@ -10,6 +11,8 @@ import scala.util.Sorting
   * Created by wangyanl on 2019/6/14.
   */
 object UserStats {
+
+  @transient lazy val logger = Logger.getLogger(this.getClass)
 
   def main(args: Array[String]) {
     val conf = new SparkConf()

@@ -2,6 +2,7 @@ package org.hdwyl
 
 import java.util.Calendar
 
+import org.apache.log4j.Logger
 import org.apache.spark.rdd.RDD
 import org.apache.spark.{SparkConf, SparkContext}
 
@@ -9,6 +10,9 @@ import org.apache.spark.{SparkConf, SparkContext}
   * Created by wangyanl on 2019/6/14.
   */
 object RatingStats {
+
+  @transient lazy val logger = Logger.getLogger(this.getClass)
+
   def main(args: Array[String]) {
     val conf = new SparkConf()
     val sc = new SparkContext(conf)
@@ -34,7 +38,7 @@ object RatingStats {
     val meanRating = ratings.reduce((x, y) => x + y) * 1.0 / numRatings
     val meanRating2 = ratings.sum() * 1.0 / numRatings
     // 计算评分的中位数
-    val medianRating = getMedian(ratings)
+    val medianRating = Utils.getMedian(ratings)
     // 用户数量
     val numUsers = 943
     // 用户的平均评分
@@ -94,39 +98,4 @@ object RatingStats {
     return timesOfDay.filter(e => e._2.split(",").contains(hour.toString)).keys.toList(0)
   }
 
-  def getMedian(data: RDD[Int]): Int = {
-    // 将数据分为4组
-    val number = data.map(n => (n / 4, n)).sortByKey()
-    // 每个分组的数据量
-    val pairCount = data.map(n => (n / 4, 1)).reduceByKey(_ + _).sortByKey()
-    // 数据总量
-    val count = data.count().toInt
-    // 中值在整个数据区间的偏移量
-    var mid = 0
-    if (count % 2 != 0) {
-      mid = count / 2 + 1
-    } else {
-      mid = count / 2
-    }
-
-    var temp1 = 0 // 中值所在的区间累加的个数
-    var temp2 = 0 // 中值所在的区间前面所有的区间累加的个数
-    var index = 0 // 中值的区间
-    val tongNumber = pairCount.count().toInt
-
-    var foundIt = false
-    for (i <- 0 to tongNumber - 1 if !foundIt) {
-      temp1 = temp1 + pairCount.collectAsMap()(i)
-      temp2 = temp1 - pairCount.collectAsMap()(i)
-      if (temp1 >= mid) {
-        index = i
-        foundIt = true
-      }
-    }
-    // 中位数在桶中的偏移量
-    val tongInnerOffset = mid - temp2
-    // takeOrdered: 默认将key从小到大排序后, 获取rdd中的前n个元素
-    val median = number.filter(_._1 == index).takeOrdered(tongInnerOffset)
-    return median(tongInnerOffset - 1)._2
-  }
 }

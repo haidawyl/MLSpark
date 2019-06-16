@@ -2,16 +2,23 @@ package org.hdwyl
 
 import java.util.Calendar
 
+import breeze.linalg._
+import org.apache.log4j.Logger
+
 import scala.io.Source
+import scala.util.matching.Regex
 
 /**
   * Created by wangyanl on 2019/6/14.
   */
 object LocalStats {
+
+  @transient lazy val logger = Logger.getLogger(this.getClass)
+
   def main(args: Array[String]): Unit = {
-//    statUser()
-//    statMovie()
-    statRating()
+    // statUser()
+    statMovie()
+    // statRating()
   }
 
   def statUser(): Unit = {
@@ -42,23 +49,9 @@ object LocalStats {
       allOccupationsWithIndex.foreach(println)
     } catch {
       case ex: Exception => {
+        logger.error(ex.getMessage, ex)
       }
     }
-    file.close()
-  }
-
-  def statMovie(): Unit = {
-    val file = Source.fromInputStream(getClass().getClassLoader().getResourceAsStream("data/ml-100k/u.item"), "UTF-8")
-    val lines = file.getLines()
-    try {
-      for (line <- lines) {
-        println(convertYear(line.split("\\|")(2)))
-      }
-    } catch {
-      case ex: StringIndexOutOfBoundsException => {
-      }
-    }
-
     file.close()
   }
 
@@ -67,9 +60,128 @@ object LocalStats {
       return Integer.parseInt(x.substring(x.length() - 4))
     } catch {
       case ex: NumberFormatException => {
+        logger.error(ex.getMessage)
+        logger.warn("x:" + x)
+        return 1900 // 若数据缺失年份则将其年份设为1900
+      }
+      case ex: StringIndexOutOfBoundsException => {
+        logger.error(ex.getMessage)
+        logger.warn("x:" + x)
         return 1900 // 若数据缺失年份则将其年份设为1900
       }
     }
+  }
+
+  def extractTitle(raw: String): String = {
+    // 该表达式找寻括号之间的非单词（数字）
+    val pattern = new Regex("\\(\\d+\\)")
+    return (pattern replaceFirstIn(raw, "")).trim
+  }
+
+  // 该函数输入一个词列表，并用k之1编码类似的方式将其编码为一个稀疏向量
+  def createVector(terms: List[String], termDict: Map[String, Int]): DenseMatrix[Int] = {
+    import breeze.linalg.DenseMatrix._
+    val numTerms = termDict.size
+    val x = DenseMatrix.zeros[Int](1, numTerms)
+    for (term <- terms) {
+      if (termDict.contains(term)) {
+        val idx = termDict.get(term).get
+        x(::, idx) := 1
+      }
+    }
+    return x
+  }
+
+  def statMovie(): Unit = {
+    val file = Source.fromInputStream(getClass().getClassLoader().getResourceAsStream("data/ml-100k/u.item"), "UTF-8")
+    val movieData = file.getLines().toList
+
+    // 统计电影数量
+    val numMovies = movieData.size
+    // Movies: 1682
+    println("Movies: %d".format(numMovies))
+
+    val movieFields = movieData.map(line => line.split("\\|"))
+    // 提取出电影的年份信息
+    val years = movieFields.map(e => e(2)).map(x => convertYear(x))
+    // 过滤掉1900年(即未记录年份)的电影数据
+    val filteredYears = years.filter { year => year != 1900 }
+    // 计算得到电影的年龄
+    val thisYear = Calendar.getInstance().get(Calendar.YEAR)
+    // countByVale : map(e => (e, 1)).groupBy(_._1).map(e => (e._1, e._2.size))
+    val movieAges = filteredYears.map(year => thisYear - year).map(e => (e, 1)).groupBy(_._1).map(e => (e._1, e._2.size))
+    // println(movieAges)
+
+    val meanYear = filteredYears.sum / filteredYears.size
+    // 非1900年的全部年份的中位数值
+    val medianYear = getMedian(filteredYears)
+    println(years.filter(year => year == 1900))
+    val yearsPreProcessed = years.map(year => if (year == 1900) medianYear else year)
+    println(yearsPreProcessed.filter(year => year == 1900))
+    // Mean year of release: 1989
+    println("Mean year of release: %d".format(meanYear))
+    // Median year of release: 1995
+    println("Median year of release: %d".format(medianYear))
+    // Index of '1900' before assigning median: List(266)
+    println("Index of '1900' before assigning median: %s".format(years.zipWithIndex.find(e => e._1 == 1900).map(e => e._2).toList))
+    // Index of '1900' after assigning median: List()
+    println("Index of '1900' after assigning median: %s".format(yearsPreProcessed.zipWithIndex.find(e => e._1 == 1900).map(e => e._2).toList))
+
+    val rawTitles = movieFields.map(e => e(1))
+    val movieTitles = rawTitles.map(title => extractTitle(title))
+    // 下面用简单空白分词法将标题分词为词
+    val titleTerms = movieTitles.map(title => title.split(" "))
+    // 下面取回所有可能的词，以便构建一个词到序号的映射字典
+    val pattern = new Regex("[,\\(\\):]")
+    val allTermsWithIndex = titleTerms.flatMap(e => e).map(e => pattern replaceAllIn (e, "")).distinct.zipWithIndex.toMap
+
+    // Total number of terms: 2457
+    println("Total number of terms: %d".format(allTermsWithIndex.size))
+    // Index of term 'Dead': 19
+    println("Index of term 'Dead': %d".format(allTermsWithIndex.get("Dead").get))
+    // Index of term 'Rooms': 4
+    println("Index of term 'Rooms': %d".format(allTermsWithIndex.get("Rooms").get))
+
+    val termVectors = titleTerms.map(terms => createVector(terms.toList, allTermsWithIndex))
+    println(allTermsWithIndex)
+    titleTerms.take(10).map(term => term.mkString(" ")).foreach(println)
+    termVectors.take(10).foreach(println)
+
+    val x = DenseVector.rand(10)
+    val normX2 = norm(x)
+    val normalizedX = x :/ normX2
+    println("x:\n%s".format(x))
+    println("2-Norm of x: %2.4f".format(normX2))
+    println("Normalized x:\n%s".format(normalizedX))
+    println("2-Norm of normalized: %2.4f".format(norm(normalizedX)))
+
+    file.close()
+  }
+
+
+  def extractDatetime(ts: String): Calendar = {
+    val calendar = Calendar.getInstance()
+    calendar.setTimeInMillis(ts.toLong)
+    return calendar
+  }
+
+  def assignTod(hour: Int): String = {
+    val timesOfDay = Map("morning" -> "7,8,9,10,11", "lunch" -> "12,13", "afternoon" -> "14,15,16,17", "evening" -> "18,19,20,21,22", "night" -> "23,0,1,2,3,4,5,6");
+    return timesOfDay.filter(e => e._2.split(",").contains(hour.toString)).keys.toList(0)
+  }
+
+  def getMedian(data: List[Int]): Int = {
+    val sortedData = data.sortBy(x => x)
+    val count = data.size
+    val median: Int = if (count % 2 == 0) {
+      val l = count / 2 - 1
+      val r = l + 1
+      (sortedData(l) + sortedData(r)) / 2
+    } else {
+      sortedData(count / 2 + 1)
+    }
+
+    return median
   }
 
   def statRating(): Unit = {
@@ -141,52 +253,5 @@ object LocalStats {
     // println(timeOfDaysWithIndex)
 
     file.close()
-  }
-
-  def extractDatetime(ts: String): Calendar = {
-    val calendar = Calendar.getInstance()
-    calendar.setTimeInMillis(ts.toLong)
-    return calendar
-  }
-
-  def assignTod(hour: Int): String = {
-    val timesOfDay = Map("morning" -> "7,8,9,10,11", "lunch" -> "12,13", "afternoon" -> "14,15,16,17", "evening" -> "18,19,20,21,22", "night" -> "23,0,1,2,3,4,5,6");
-    return timesOfDay.filter(e => e._2.split(",").contains(hour.toString)).keys.toList(0)
-  }
-
-  def getMedian(data: List[Int]): Int = {
-    // 将数据分为4组
-    val number = data.map(n => (n / 4, n)).sortBy(_._1)
-    // 每个分组的数据量
-    val pairCount = data.map(n => (n / 4, 1)).groupBy(_._1).map(e => (e._1, e._2.size)).toList.sortBy(_._1)
-    // 数据总量
-    val count = data.size
-    // 中值在整个数据区间的偏移量
-    var mid = 0
-    if (count % 2 != 0) {
-      mid = count / 2 + 1
-    } else {
-      mid = count / 2
-    }
-
-    var temp1 = 0 // 中值所在的区间累加的个数
-    var temp2 = 0 // 中值所在的区间前面所有的区间累加的个数
-    var index = 0 // 中值的区间
-    val tongNumber = pairCount.size
-
-    var foundIt = false
-    for (i <- 0 to tongNumber - 1 if !foundIt) {
-      temp1 = temp1 + pairCount(i)._2
-      temp2 = temp1 - pairCount(i)._2
-      if (temp1 >= mid) {
-        index = i
-        foundIt = true
-      }
-    }
-    // 中位数在桶中的偏移量
-    val tongInnerOffset = mid - temp2
-    // 将key从小到大排序后, 获取前n个元素
-    val median = number.filter(_._1 == index).sortBy(_._1).take(tongInnerOffset)
-    return median(tongInnerOffset - 1)._2
   }
 }
