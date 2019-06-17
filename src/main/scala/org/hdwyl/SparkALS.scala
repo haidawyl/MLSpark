@@ -34,7 +34,7 @@ object SparkALS {
     val titles = movies.map(line => line.split("\\|").take(2)).map(e => (e(0).toInt, e(1))).collectAsMap()
 
     val moviesForUsers = ratings1.keyBy(_.user)
-    val userData = rawRatings1.map(e => e(0).toInt).distinct()
+    val userData = rawRatings1.map(e => e(0).toInt).distinct().collect()
     val K = 10
     for (user <- userData) {
       val topKRecs = model1.recommendProducts(user, K)
