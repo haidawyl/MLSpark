@@ -39,6 +39,11 @@
             <artifactId>spark-mllib_${scala.version}</artifactId>
             <version>${spark.version}</version>
         </dependency>
+        <dependency>
+            <groupId>org.jblas</groupId>
+            <artifactId>jblas</artifactId>
+            <version>1.2.4</version>
+        </dependency>
         <!-- log4j-api-scala -->
         <dependency>
             <groupId>org.apache.logging.log4j</groupId>

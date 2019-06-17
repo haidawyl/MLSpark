@@ -2,6 +2,7 @@ package org.hdwyl
 
 import org.apache.spark.mllib.recommendation.{ALS, Rating}
 import org.apache.spark.{SparkConf, SparkContext}
+import org.jblas.DoubleMatrix
 
 /**
   * Created by wangyanl on 2019/6/16.
@@ -44,6 +45,8 @@ object SparkALS {
       val topNMovies = ratingsForUser.take(n).map(rating => (titles(rating.product), rating.rating))
       println("User: %d, top %d Movies: %s".format(user, n, topNMovies.toArray.mkString(" / ")))
     }
+
+    val aMatrix = new DoubleMatrix(Array(1.0, 2.0, 3.0))
 
     // 隐式数据集
     val rawRatings2 = rawData.map(_.split("\t").take(3)).map(e => (e(0), e(1), if (e(2).toInt < 3) 0 else 1))
