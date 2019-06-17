@@ -19,7 +19,7 @@ object RatingStats {
     // 读取数据集
     val ratingDataRaw = sc.textFile("hdfs://PATH/ml-100k/u.data")
     // 输出第1行数据
-    println(ratingDataRaw.first())
+    // println(ratingDataRaw.first())
     // 统计数量
     val numRatings = ratingDataRaw.count()
     // Ratings: 100000

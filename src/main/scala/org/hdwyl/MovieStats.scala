@@ -21,9 +21,9 @@ object MovieStats {
     // 读取数据集
     val movieData = sc.textFile("hdfs://PATH/ml-100k/u.item")
     // 输出第1行数据
-    println(movieData.first())
+    // println(movieData.first())
     // 输出前k行数据
-    println(movieData.take(10).mkString(" "))
+    // println(movieData.take(10))
 
     // 统计电影数量
     val numMovies = movieData.count()
@@ -38,7 +38,7 @@ object MovieStats {
     // 计算得到电影的年龄
     val thisYear = Calendar.getInstance().get(Calendar.YEAR)
     val movieAges = filteredYears.map(year => thisYear - year).countByValue()
-    movieAges.foreach(println)
+    // movieAges.foreach(println)
 
     val meanYear = filteredYears.sum() / filteredYears.count()
     // 非1900年的全部年份的中位数值

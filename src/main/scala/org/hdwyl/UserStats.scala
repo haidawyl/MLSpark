@@ -20,13 +20,13 @@ object UserStats {
     // 读取数据集
     val userData = sc.textFile("hdfs://PATH/ml-100k/u.user")
     // 输出第1行数据
-    println(userData.first())
+    // println(userData.first())
     // 输出前k行数据
-    println(userData.take(10))
+    // println(userData.take(10))
 
     // 用户ID（user ID）、年龄（age）、性别（gender）、职业（occupation）和邮编（ZIP code）
-    val userFields = userData.map(line => line.split("|")).map(e => (e(0), e(1), e(2), e(3), e(4)))
-    userFields.take(10).foreach(println)
+    val userFields = userData.map(line => line.split("\\|")).map(e => (e(0), e(1), e(2), e(3), e(4)))
+    // userFields.take(10).foreach(println)
     // 统计用户数量
     val numUsers = userFields.map{ case (userId, age, gender, occupation, zipCode) => userId}.count()
     // 统计性别数量
