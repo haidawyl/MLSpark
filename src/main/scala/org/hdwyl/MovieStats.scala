@@ -23,14 +23,14 @@ object MovieStats {
     // 输出第1行数据
     println(movieData.first())
     // 输出前k行数据
-    println(movieData.take(10))
+    println(movieData.take(10).mkString(" "))
 
     // 统计电影数量
     val numMovies = movieData.count()
     // Movies: 1682
     println("Movies: %d".format(numMovies))
 
-    val movieFields = movieData.map(line => line.split("|"))
+    val movieFields = movieData.map(line => line.split("\\|"))
     // 提取出电影的年份信息
     val years = movieFields.map(e => e(2)).map(x => convertYear(x))
     // 过滤掉1900年(即未记录年份)的电影数据
@@ -47,7 +47,7 @@ object MovieStats {
     val yearsPreProcessed = years.map(year => if (year == 1900) medianYear else year)
     println(yearsPreProcessed.filter(year => year == 1900))
     // Mean year of release: 1989
-    println("Mean year of release: %d".format(meanYear))
+    println("Mean year of release: %d".format(meanYear.toInt))
     // Median year of release: 1995
     println("Median year of release: %d".format(medianYear))
     // Index of '1900' before assigning median: List(266)
