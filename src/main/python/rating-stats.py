@@ -86,12 +86,14 @@ hour_of_day = timestamps.map(lambda ts: extract_datetime(ts).hour)
 print(hour_of_day.take(5))
 
 def assign_tod(hr):
+    night_array = range(0, 7)
+    night_array.extend([23])
     times_of_day = {
         'morning' : range(7, 12),
         'lunch' : range(12, 14),
         'afternoon' : range(14, 18),
         'evening' : range(18, 23),
-        'night' : range(23, 7)
+        'night' : night_array
     }
     for k, v in times_of_day.iteritems():
         if hr in v:
