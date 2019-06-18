@@ -16,9 +16,9 @@ object LocalStats {
   @transient lazy val logger = Logger.getLogger(this.getClass)
 
   def main(args: Array[String]): Unit = {
-    // statUser()
+    statUser()
     statMovie()
-    // statRating()
+    statRating()
   }
 
   def statUser(): Unit = {
