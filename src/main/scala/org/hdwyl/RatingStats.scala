@@ -3,7 +3,6 @@ package org.hdwyl
 import java.util.Calendar
 
 import org.apache.log4j.Logger
-import org.apache.spark.rdd.RDD
 import org.apache.spark.{SparkConf, SparkContext}
 
 /**
