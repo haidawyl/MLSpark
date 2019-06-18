@@ -61,6 +61,4 @@ object UserStats {
 
     sc.stop()
   }
-
-
 }
