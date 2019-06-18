@@ -1,6 +1,5 @@
 package org.hdwyl
 
-import breeze.linalg.Axis._1
 import org.apache.log4j.Logger
 import org.apache.spark.{SparkConf, SparkContext}
 import org.apache.spark.SparkContext._
