@@ -36,10 +36,12 @@ object SparkALS {
     val userId = 789
     val movieId = 123
     val predictedRating = model1.predict(userId, movieId)
-    println("predictedRating: %1.2f".format(predictedRating))
+    println("userId:%d, movieId:%d, predictedRating: %1.2f".format(userId, movieId, predictedRating))
 
     val movies = sc.textFile("hdfs://PATH/ml-100k/u.item")
     val titles = movies.map(line => line.split("\\|").take(2)).map(e => (e(0).toInt, e(1))).collectAsMap()
+    // println("Movie Titles:")
+    // titles.take(K).foreach(println)
 
     val moviesForUsers = ratings1.keyBy(_.user)
     val userData = rawRatings1.map(e => e(0).toInt).distinct().collect()
