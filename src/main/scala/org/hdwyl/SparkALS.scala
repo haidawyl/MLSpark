@@ -13,6 +13,8 @@ object SparkALS {
   def main(args: Array[String]) {
     val conf = new SparkConf()
     val sc = new SparkContext(conf)
+    val userId = 789
+    val movieId = 123
     val K = 10
 
     // 读取数据集
@@ -68,8 +70,6 @@ object SparkALS {
     }
 
     // 计算用户789对电影123的预期得分
-    val userId = 789
-    val movieId = 123
     val predictedRating1 = model1.predict(userId, movieId)
     println("userId:%d, movieId:%d, predictedRating: %1.2f".format(userId, movieId, predictedRating1))
 
