@@ -31,9 +31,11 @@ object SparkALS {
     // User's factor: 943
     // Data Structure of the model1.userFeatures: (userId, factor)
     println("User's factor: %d".format(model1.userFeatures.count()))
+    model1.userFeatures.take(K).foreach(println)
     // Movie's factor: 1682
     // Data Structure of the model1.productFeatures: (movieId, factor)
     println("Movie's factor: %d".format(model1.productFeatures.count()))
+    model1.productFeatures.take(K).foreach(println)
     //
     val userId = 789
     val movieId = 123
