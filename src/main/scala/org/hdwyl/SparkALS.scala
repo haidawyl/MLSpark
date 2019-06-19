@@ -14,10 +14,12 @@ object SparkALS {
     val conf = new SparkConf()
     val sc = new SparkContext(conf)
     // 读取数据集
+    // Data Structure(separated with a tab): userId movieId rating timestamp
     val rawData = sc.textFile("hdfs://PATH/ml-100k/u.data")
     // println(rawData.first())
 
     // 显示数据集
+    // Data Structure: Array(userId, movieId, rating)
     val rawRatings1 = rawData.map(_.split("\t").take(3))
     // println(rawRatings1.first().mkString(" "))
     val ratings1 = rawRatings1.map { case Array(user, movie, rating) => Rating(user.toInt, movie.toInt, rating.toDouble) }
@@ -25,10 +27,15 @@ object SparkALS {
     // 创建MatrixFactorizationModel对象, 该对象将用户因子和物品因子分别保存在一个(id,factor)对类型的RDD中, 它们分别称作userFeatures和productFeatures.
     val model1 = ALS.train(ratings1, 50, 10, 0.01)
     // User's factor: 943
+    // Data Structure of the model1.userFeatures: (userId, factor)
     println("User's factor: %d".format(model1.userFeatures.count()))
     // Movie's factor: 1682
+    // Data Structure of the model1.productFeatures: (movieId, factor)
     println("Movie's factor: %d".format(model1.productFeatures.count()))
-    val predictedRating = model1.predict(789, 123)
+    //
+    val userId = 789
+    val movieId = 123
+    val predictedRating = model1.predict(userId, movieId)
     println("predictedRating: %1.2f".format(predictedRating))
 
     val movies = sc.textFile("hdfs://PATH/ml-100k/u.item")
@@ -96,7 +103,6 @@ object SparkALS {
     println("和电影《%s》最相似的%d部电影是:".format(titles(itemId), K))
     sortedItemSims2.slice(1, 11).map { case (id, sim) => (titles(id), sim) }.foreach(println)
 
-    val userId = 789
     val userFactor = model1.userFeatures.lookup(userId).head
     val userVector = new DoubleMatrix(userFactor)
     println(cosineSimilarity(userVector, userVector))
