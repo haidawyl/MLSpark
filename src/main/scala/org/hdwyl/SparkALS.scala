@@ -135,6 +135,9 @@ object SparkALS {
     val ratingsAndPredictions = ratings1.map {
       case Rating(user, product, rating) => ((user, product), rating)
     }.join(predictions)
+    println("ratingsAndPredictions:")
+    // Data Structure: ((user, product), (actual, predicted))
+    ratingsAndPredictions.take(K).foreach(println)
 
     // 均方差（Mean Squared Error，MSE）
     val MSE = ratingsAndPredictions.map {
@@ -190,8 +193,6 @@ object SparkALS {
     }.reduce(_ + _) / allRecs.count()
     println("Mean Average Precision at K = " + MAPK)
 
-    println("ratingsAndPredictions:")
-    ratingsAndPredictions.take(K).foreach(println)
     val predictedAndTrue = ratingsAndPredictions.map { case ((user, product), (predicted, actual)) =>
       (predicted, actual)
     }
