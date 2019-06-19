@@ -142,7 +142,7 @@ object SparkALS {
     println("模型对用户%d的第一个预测评级是:%f".format(userId, predictedRating3))
 
     // 计算实际评级和预计评级的平方误差
-    val squaredError = math.pow(predictedRating - actualRating.rating, 2.0)
+    val squaredError = math.pow(predictedRating3 - actualRating.rating, 2.0)
     println("实际评级和预计评级的平方误差是:%f".format(squaredError))
 
     val usersProducts = ratings1.map { case Rating(user, product, rating) => (user, product) }
