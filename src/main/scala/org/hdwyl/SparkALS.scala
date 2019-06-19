@@ -13,6 +13,8 @@ object SparkALS {
   def main(args: Array[String]) {
     val conf = new SparkConf()
     val sc = new SparkContext(conf)
+    val K = 10
+
     // 读取数据集
     // Data Structure(separated with a tab): userId movieId rating timestamp
     val rawData = sc.textFile("hdfs://PATH/ml-100k/u.data")
@@ -43,10 +45,13 @@ object SparkALS {
     // println("Movie Titles:")
     // titles.take(K).foreach(println)
 
+    // keyBy: 为各个元素按指定的函数生成key, 形成key-value的RDD.
     val moviesForUsers = ratings1.keyBy(_.user)
-    val userData = rawRatings1.map(e => e(0).toInt).distinct().collect()
-    val K = 10
+    // println("moviesForUsers:")
+    // moviesForUsers.take(K).foreach(println)
+    
     /*
+    val userData = rawRatings1.map(e => e(0).toInt).distinct().collect()
     for (userId <- userData) {
       val topKRecs = model1.recommendProducts(userId, K)
       println("User: %d, recommend %d Movies: %s".format(userId, K,topKRecs.map(rating => (titles(rating.product), rating.rating)).mkString(" / ")))
@@ -60,9 +65,11 @@ object SparkALS {
 
     // 隐式数据集
     val rawRatings2 = rawData.map(_.split("\t").take(3)).map(e => (e(0), e(1), if (e(2).toInt < 3) 0 else 1))
-    // println(rawRatings2.first())
+    // println("rawRatings2")
+    // rawRatings2.take(K).foreach(println)
     val ratings2 = rawRatings2.map { case (user, movie, rating) => Rating(user.toInt, movie.toInt, rating.toDouble) }
-    // println(ratings2.first())
+    // println("ratings2:")
+    // ratings2.take(K).foreach(println)
     // 创建MatrixFactorizationModel对象, 该对象将用户因子和物品因子分别保存在一个(id,factor)对类型的RDD中, 它们分别称作userFeatures和productFeatures.
     val model2 = ALS.trainImplicit(ratings2, 50, 10, 0.01, 0.01)
     // User's factor: ?
