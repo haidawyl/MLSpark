@@ -26,32 +26,53 @@ object SparkALS {
     // println(rawRatings1.first().mkString(" "))
     val ratings1 = rawRatings1.map { case Array(user, movie, rating) => Rating(user.toInt, movie.toInt, rating.toDouble) }
     // println(ratings1.first())
-    // 创建MatrixFactorizationModel对象, 该对象将用户因子和物品因子分别保存在一个(id,factor)对类型的RDD中, 它们分别称作userFeatures和productFeatures.
+    // rank：对应ALS模型中的因子个数，也就是在低阶近似矩阵中的隐含特征个数。因子个数一般越多越好。
+    // 但它也会直接影响模型训练和保存时所需的内存开销，尤其是在用户和物品很多的时候。
+    // 因此实践中该参数常作为训练效果与系统开销之间的调节参数。通常，其合理取值为10到200。
+    // iterations：对应运行时的迭代次数。ALS能确保每次迭代都能降低评级矩阵的重建误差，但一般经少数次迭代后
+    // ALS模型便已能收敛为一个比较合理的好模型。这样，大部分情况下都没必要迭代太多次（10次左右一般就挺好）。
+    // lambda：该参数控制模型的正则化过程，从而控制模型的过拟合情况。其值越高，正则化越严厉。
+    // 该参数的赋值与实际数据的大小、特征和稀疏程度有关。和其它的机器学习模型一样，正则参数应该通过用非样本的测试数据进行交叉验证来调整。
+    // 方法返回一个MatrixFactorizationModel对象, 该对象将用户因子和物品因子分别保存在一个(id,factor)对类型的RDD中，
+    // 它们分别称作userFeatures和productFeatures。
     val model1 = ALS.train(ratings1, 50, 10, 0.01)
     // User's factor: 943
-    // Data Structure of the model1.userFeatures: (userId, factor)
+    // Data Structure of the model1.userFeatures: RDD[(Int, Array[Double])]
     println("User's factor: %d".format(model1.userFeatures.count()))
     model1.userFeatures.map{ case (id, factors) => (id, factors.mkString(", ")) }.take(K).foreach(println)
     // Movie's factor: 1682
-    // Data Structure of the model1.productFeatures: (movieId, factor)
+    // Data Structure of the model1.productFeatures: RDD[(Int, Array[Double])]
     println("Movie's factor: %d".format(model1.productFeatures.count()))
     model1.productFeatures.map{ case (id, factors) => (id, factors.mkString(", ")) }.take(K).foreach(println)
-    //
+
+    // 隐式数据集
+    val rawRatings2 = rawData.map(_.split("\t").take(3)).map(e => (e(0), e(1), if (e(2).toInt < 3) 0 else 1))
+    // println("rawRatings2")
+    // rawRatings2.take(K).foreach(println)
+    val ratings2 = rawRatings2.map { case (user, movie, rating) => Rating(user.toInt, movie.toInt, rating.toDouble) }
+    // println("ratings2:")
+    // ratings2.take(K).foreach(println)
+    val alphas = List(5, 4, 3, 2, 1)
+    for (alpha <- alphas) {
+      // alpha参数指定了信心权重所应达到的基准线。该值越高则所训练出的模型越认为用户与他没评级过的电影之间没有相关性。
+      // 方法返回一个MatrixFactorizationModel对象, 该对象将用户因子和物品因子分别保存在一个(id,factor)对类型的RDD中，
+      // 它们分别称作userFeatures和productFeatures。
+      val model2 = ALS.trainImplicit(ratings2, 50, 10, 0.01, alpha)
+      // User's factor: 943
+      println("User's factor: %d".format(model2.userFeatures.count()))
+      // Movie's factor: 1682
+      println("Movie's factor: %d".format(model2.productFeatures.count()))
+      val predictedRating2 = model2.predict(userId, movieId)
+      println("alpha = %f".format(alpha))
+      println("userId:%d, movieId:%d, predictedRating: %1.2f".format(userId, movieId, predictedRating2))
+    }
+
+    // 计算用户789对电影123的预期得分
     val userId = 789
     val movieId = 123
     val predictedRating1 = model1.predict(userId, movieId)
     println("userId:%d, movieId:%d, predictedRating: %1.2f".format(userId, movieId, predictedRating1))
 
-    val movies = sc.textFile("hdfs://PATH/ml-100k/u.item")
-    val titles = movies.map(line => line.split("\\|").take(2)).map(e => (e(0).toInt, e(1))).collectAsMap()
-    // println("Movie Titles:")
-    // titles.take(K).foreach(println)
-
-    // keyBy: 为各个元素按指定的函数生成key, 形成key-value的RDD.
-    val moviesForUsers = ratings1.keyBy(_.user)
-    // println("moviesForUsers:")
-    // moviesForUsers.take(K).foreach(println)
-    
     /*
     val userData = rawRatings1.map(e => e(0).toInt).distinct().collect()
     for (userId <- userData) {
@@ -65,25 +86,32 @@ object SparkALS {
     }
     */
 
-    // 隐式数据集
-    val rawRatings2 = rawData.map(_.split("\t").take(3)).map(e => (e(0), e(1), if (e(2).toInt < 3) 0 else 1))
-    // println("rawRatings2")
-    // rawRatings2.take(K).foreach(println)
-    val ratings2 = rawRatings2.map { case (user, movie, rating) => Rating(user.toInt, movie.toInt, rating.toDouble) }
-    // println("ratings2:")
-    // ratings2.take(K).foreach(println)
-    val alphas = List(100.0, 10.0, 1.0, 0.1, 0.01)
-    for (alpha <- alphas) {
-      // 创建MatrixFactorizationModel对象, 该对象将用户因子和物品因子分别保存在一个(id,factor)对类型的RDD中, 它们分别称作userFeatures和productFeatures.
-      val model2 = ALS.trainImplicit(ratings2, 50, 10, 0.01, alpha)
-      // User's factor: 943
-      println("User's factor: %d".format(model2.userFeatures.count()))
-      // Movie's factor: 1682
-      println("Movie's factor: %d".format(model2.productFeatures.count()))
-      val predictedRating2 = model2.predict(userId, movieId)
-      println("alpha = %f".format(alpha))
-      println("userId:%d, movieId:%d, predictedRating: %1.2f".format(userId, movieId, predictedRating2))
-    }
+    // 计算给用户789推荐的前K部电影
+    val topKRecs = model1.recommendProducts(userId, K)
+    // 计算得到的推荐电影列表
+    val predictedMovies = topKRecs.map(_.product)
+    println("predictedMovies: %s".format(predictedMovies.mkString(", ")))
+
+    val movies = sc.textFile("hdfs://PATH/ml-100k/u.item")
+    val titles = movies.map(line => line.split("\\|").take(2)).map(e => (e(0).toInt, e(1))).collectAsMap()
+    // println("Movie Titles:")
+    // titles.take(K).foreach(println)
+    println("编号为%d的电影名称是%s".format(userId, titles(userId)))
+
+    // keyBy: 为各个元素按指定的函数生成key, 形成key-value的RDD.
+    val moviesForUsers = ratings1.keyBy(_.user)
+    // println("moviesForUsers:")
+    // moviesForUsers.take(K).foreach(println)
+    val moviesForUser = moviesForUsers.lookup(userId)
+    println("用户%d评价了%d部电影".format(userId, moviesForUser.size))
+    val actualRating = moviesForUser.take(1)(0)
+    println("用户%d的第一个评级是:%s".format(userId, actualRating))
+
+    println("用户%d评价最高的%d部电影是:".format(userId, K))
+    moviesForUser.sortBy(_.rating).take(K).map( rating => (titles(rating.product), rating.rating)).foreach(println)
+
+    println("给用户%d推荐的前%d部电影是:".format(userId, K))
+    topKRecs.map(rating => (titles(rating.product), rating.rating)).foreach(println)
 
     val aMatrix = new DoubleMatrix(Array(1.0, 2.0, 3.0))
     println("aMatrix:")
@@ -141,9 +169,6 @@ object SparkALS {
     println("和用户%d最相似的%d个用户是:".format(userId, K))
     sortedUserSims2.slice(1, 11).foreach(println)
 
-    val moviesForUser = moviesForUsers.lookup(userId)
-    val actualRating = moviesForUser.take(1)(0)
-    println("用户%d的第一个评级是:%s".format(userId, actualRating))
     // 求模型的预测评级
     val predictedRating3 = model1.predict(userId, actualRating.product)
     println("模型对用户%d的第一个预测评级是:%f".format(userId, predictedRating3))
@@ -175,12 +200,6 @@ object SparkALS {
     // 用户实际评级过的电影ID列表
     val actualMovies = moviesForUser.map(_.product)
     println("actualMovies: %s".format(actualMovies.mkString(", ")))
-
-    // 模型针对用户789推荐的电影
-    val topKRecs = model1.recommendProducts(userId, K)
-    // 计算得到的推荐电影列表
-    val predictedMovies = topKRecs.map(_.product)
-    println("predictedMovies: %s".format(predictedMovies.mkString(", ")))
 
     // 计算平均准确率
     val apk10 = avgPrecisionK(actualMovies, predictedMovies, 10)
