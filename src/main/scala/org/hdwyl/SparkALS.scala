@@ -84,6 +84,7 @@ object SparkALS {
     }
 
     val aMatrix = new DoubleMatrix(Array(1.0, 2.0, 3.0))
+    println("aMatrix:")
     println(aMatrix)
 
     /*
