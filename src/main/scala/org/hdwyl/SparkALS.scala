@@ -70,14 +70,18 @@ object SparkALS {
     val ratings2 = rawRatings2.map { case (user, movie, rating) => Rating(user.toInt, movie.toInt, rating.toDouble) }
     // println("ratings2:")
     // ratings2.take(K).foreach(println)
-    // 创建MatrixFactorizationModel对象, 该对象将用户因子和物品因子分别保存在一个(id,factor)对类型的RDD中, 它们分别称作userFeatures和productFeatures.
-    val model2 = ALS.trainImplicit(ratings2, 50, 10, 0.01, 0.01)
-    // User's factor: 943
-    println("User's factor: %d".format(model2.userFeatures.count()))
-    // Movie's factor: 1682
-    println("Movie's factor: %d".format(model2.productFeatures.count()))
-    val predictedRating2 = model2.predict(userId, movieId)
-    println("userId:%d, movieId:%d, predictedRating: %1.2f".format(userId, movieId, predictedRating2))
+    val alphas = List(100.0, 10.0, 1.0, 0.1, 0.01)
+    for (alpha <- alphas) {
+      // 创建MatrixFactorizationModel对象, 该对象将用户因子和物品因子分别保存在一个(id,factor)对类型的RDD中, 它们分别称作userFeatures和productFeatures.
+      val model2 = ALS.trainImplicit(ratings2, 50, 10, 0.01, alpha)
+      // User's factor: 943
+      println("User's factor: %d".format(model2.userFeatures.count()))
+      // Movie's factor: 1682
+      println("Movie's factor: %d".format(model2.productFeatures.count()))
+      val predictedRating2 = model2.predict(userId, movieId)
+      println("alpha = %f".format(alpha))
+      println("userId:%d, movieId:%d, predictedRating: %1.2f".format(userId, movieId, predictedRating2))
+    }
 
     val aMatrix = new DoubleMatrix(Array(1.0, 2.0, 3.0))
     println(aMatrix)
