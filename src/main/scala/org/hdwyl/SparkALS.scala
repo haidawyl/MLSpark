@@ -37,8 +37,8 @@ object SparkALS {
     //
     val userId = 789
     val movieId = 123
-    val predictedRating = model1.predict(userId, movieId)
-    println("userId:%d, movieId:%d, predictedRating: %1.2f".format(userId, movieId, predictedRating))
+    val predictedRating1 = model1.predict(userId, movieId)
+    println("userId:%d, movieId:%d, predictedRating: %1.2f".format(userId, movieId, predictedRating1))
 
     val movies = sc.textFile("hdfs://PATH/ml-100k/u.item")
     val titles = movies.map(line => line.split("\\|").take(2)).map(e => (e(0).toInt, e(1))).collectAsMap()
@@ -72,10 +72,12 @@ object SparkALS {
     // ratings2.take(K).foreach(println)
     // 创建MatrixFactorizationModel对象, 该对象将用户因子和物品因子分别保存在一个(id,factor)对类型的RDD中, 它们分别称作userFeatures和productFeatures.
     val model2 = ALS.trainImplicit(ratings2, 50, 10, 0.01, 0.01)
-    // User's factor: ?
+    // User's factor: 943
     println("User's factor: %d".format(model2.userFeatures.count()))
-    // Movie's factor: ?
+    // Movie's factor: 1682
     println("Movie's factor: %d".format(model2.productFeatures.count()))
+    val predictedRating2 = model2.predict(userId, movieId)
+    println("userId:%d, movieId:%d, predictedRating: %1.2f".format(userId, movieId, predictedRating2))
 
     val aMatrix = new DoubleMatrix(Array(1.0, 2.0, 3.0))
     println(aMatrix)
@@ -136,8 +138,8 @@ object SparkALS {
     val actualRating = moviesForUser.take(1)(0)
     println("用户%d的第一个评级是:%s".format(userId, actualRating))
     // 求模型的预测评级
-    val predictedRating1 = model1.predict(userId, actualRating.product)
-    println("模型对用户%d的第一个预测评级是:%f".format(userId, predictedRating1))
+    val predictedRating3 = model1.predict(userId, actualRating.product)
+    println("模型对用户%d的第一个预测评级是:%f".format(userId, predictedRating3))
 
     // 计算实际评级和预计评级的平方误差
     val squaredError = math.pow(predictedRating - actualRating.rating, 2.0)
