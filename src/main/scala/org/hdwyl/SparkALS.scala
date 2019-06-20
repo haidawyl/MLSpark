@@ -10,7 +10,7 @@ import org.jblas.DoubleMatrix
   * Created by wangyanl on 2019/6/16.
   */
 object SparkALS {
- 
+
   @transient lazy val logger = Logger.getLogger(this.getClass)
 
   def main(args: Array[String]) {
@@ -44,11 +44,11 @@ object SparkALS {
     // User's factor: 943
     // Data Structure of the model1.userFeatures: RDD[(Int, Array[Double])]
     println("User's factor: %d".format(model1.userFeatures.count()))
-    model1.userFeatures.map{ case (id, factors) => (id, factors.mkString(", ")) }.take(K).foreach(println)
+    model1.userFeatures.map { case (id, factors) => (id, factors.mkString(", ")) }.take(K).foreach(println)
     // Movie's factor: 1682
     // Data Structure of the model1.productFeatures: RDD[(Int, Array[Double])]
     println("Movie's factor: %d".format(model1.productFeatures.count()))
-    model1.productFeatures.map{ case (id, factors) => (id, factors.mkString(", ")) }.take(K).foreach(println)
+    model1.productFeatures.map { case (id, factors) => (id, factors.mkString(", ")) }.take(K).foreach(println)
 
     // 隐式数据集
     val rawRatings2 = rawData.map(_.split("\t").take(3)).map(e => (e(0), e(1), if (e(2).toInt < 3) 0 else 1))
@@ -107,11 +107,9 @@ object SparkALS {
     // moviesForUsers.take(K).foreach(println)
     val moviesForUser = moviesForUsers.lookup(userId)
     println("用户%d评价了%d部电影".format(userId, moviesForUser.size))
-    val actualRating = moviesForUser.take(1)(0)
-    println("用户%d的第一个评级是:%s".format(userId, actualRating))
 
     println("用户%d评价最高的%d部电影是:".format(userId, K))
-    moviesForUser.sortBy(_.rating).take(K).map( rating => (titles(rating.product), rating.rating)).foreach(println)
+    moviesForUser.sortBy(_.rating).take(K).map(rating => (titles(rating.product), rating.rating)).foreach(println)
 
     println("给用户%d推荐的前%d部电影是:".format(userId, K))
     topKRecs.map(rating => (titles(rating.product), rating.rating)).foreach(println)
@@ -157,12 +155,15 @@ object SparkALS {
     println("和电影《%s》最相似的%d部电影是:".format(titles(itemId), K))
     sortedItemSims2.slice(1, 11).map { case (id, sim) => (titles(id), sim) }.foreach(println)
 
+    println("%d's userFeatures:".format(userId))
+    // Data Structure of the itemFactor: Array[Double]
     val userFactor = model1.userFeatures.lookup(userId).head
     val userVector = new DoubleMatrix(userFactor)
     println(cosineSimilarity(userVector, userVector))
 
     // 计算用户123与其他用户的余弦相似度
     val userSims = model1.userFeatures.map { case (id, factor) =>
+      // Data Structure of the factor: Array[Double]
       val factorVector = new DoubleMatrix(factor)
       val sim = cosineSimilarity(factorVector, userVector)
       (id, sim)
@@ -177,6 +178,13 @@ object SparkALS {
     println("和用户%d最相似的%d个用户是:".format(userId, K))
     sortedUserSims2.slice(1, 11).foreach(println)
 
+    // 均方差（Mean Squared Error，MSE）直接衡量“用户-物品”评级矩阵的重建误差。它常用于显式评级的情形。
+    // 它的定义为各平方误差的和与总数目的商。其中平方误差是指预测到的评级与真实评级的差值的平方。
+
+    // 取出用户789的第一个电影评级
+    // Rating(userId, itemId, rating)
+    val actualRating = moviesForUser.take(1)(0)
+    println("用户%d的第一个评级是:%s".format(userId, actualRating))
     // 求模型的预测评级
     val predictedRating3 = model1.predict(userId, actualRating.product)
     println("模型对用户%d的第一个预测评级是:%f".format(userId, predictedRating3))
@@ -185,10 +193,14 @@ object SparkALS {
     val squaredError = math.pow(predictedRating3 - actualRating.rating, 2.0)
     println("实际评级和预计评级的平方误差是:%f".format(squaredError))
 
+    // 从ratingsRDD里提取用户和物品的ID
     val usersProducts = ratings1.map { case Rating(user, product, rating) => (user, product) }
+    // 使用model.predict来对各个“用户-物品”对做预测，然后转换为以“用户和物品ID”对作为主键，对应的预计评级作为值的RDD。
     val predictions = model1.predict(usersProducts).map {
       case Rating(user, product, rating) => ((user, product), rating)
     }
+    // 转换ratings为以“用户和物品ID”对作为主键，实际的评级作为值的RDD。
+    // 将前面2个RDD进行连接，创建一个新的RDD，这个RDD的主键为“用户和物品ID”对，键值为相应的实际评级和预计评级。
     val ratingsAndPredictions = ratings1.map {
       case Rating(user, product, rating) => ((user, product), rating)
     }.join(predictions)
@@ -196,43 +208,60 @@ object SparkALS {
     // Data Structure: ((user, product), (actual, predicted))
     ratingsAndPredictions.take(K).foreach(println)
 
-    // 均方差（Mean Squared Error，MSE）
+    // 求均方差（Mean Squared Error，MSE），先用reduce来对平方误差求和，然后再除以count函数所求得的总记录数
     val MSE = ratingsAndPredictions.map {
-      case ((user, product), (actual, predicted)) => math.pow((actual - predicted), 2)
+      case ((user, product), (actual, predicted)) => math.pow((actual - predicted), 2.0)
     }.reduce(_ + _) / ratingsAndPredictions.count
-    println("Mean Squared Error = " + MSE)
-    // 计算均方根误差（Root Mean Squared Error，RMSE）
+    println("Mean Squared Error = %f".format(MSE))
+    // 计算均方根误差（Root Mean Squared Error，RMSE），即在MSE上取平方根
     val RMSE = math.sqrt(MSE)
-    println("Root Mean Squared Error = " + RMSE)
+    println("Root Mean Squared Error = %f".format(RMSE))
 
-    // 用户实际评级过的电影ID列表
+    // K值平均准确率（MAPK）的意思是整个数据集上的K值平均准确率（Average Precision at K metric，APK）的均值。
+    // APK是信息检索中常用的一个指标。它用于衡量针对某个查询所返回的“前K个”文档的平均相关性。
+    // 对于每次查询，我们会将结果中的前K个与实际相关的文档进行比较。
+    // 用APK指标计算时，结果中文档的排名十分重要。如果结果中文档的实际相关性越高且排名也更靠前，那APK分值也就越高。
+
+    // 当用APK来做评估推荐模型时，每一个用户相当于一个查询，而每一个“前K个”推荐物组成的集合则相当于一个查到的文档结果集合。
+    // 用户对电影的实际评级便对应着文档的实际相关性。这样，APK所试图衡量的是模型对用户感兴趣和会去接触的物品的预测能力。
+
+    // 用户789实际评级过的电影ID列表
     val actualMovies = moviesForUser.map(_.product)
-    println("actualMovies: %s".format(actualMovies.mkString(", ")))
+    println("用户%d实际评级过的电影ID列表: %s".format(userId, actualMovies.mkString(", ")))
+
+    // predictedMovies: 模型给用户789推荐的前K个电影ID列表
 
     // 计算平均准确率
     val apk10 = avgPrecisionK(actualMovies, predictedMovies, 10)
     println("apk10 = %f".format(apk10))
 
+    // 全局MAPK的求解要计算对每一个用户的APK得分，再求其平均。这就要为每一个用户都生成相应的推荐列表。
+
     // 使用电影因子向量构建一个DoubleMatrix对象
     val itemFactors = model1.productFeatures.map { case (id, factor) => factor }.collect()
+    // Data Structure of the itemFactors: Array[Double]
     val itemMatrix = new DoubleMatrix(itemFactors)
+    // itemMatrix: 1682 rows, 50 columns
     println("itemMatrix: %d rows, %d columns".format(itemMatrix.rows, itemMatrix.columns))
 
-    // 广播itemMatrix
+    // 广播itemMatrix，以便每个工作节点都能访问到
     val imBroadcast = sc.broadcast(itemMatrix)
 
+    // 计算每一个用户的推荐
     val allRecs = model1.userFeatures.map { case (userId, factors) =>
       // 使用用户因子向量构建一个DoubleMatrix对象
       val userVector = new DoubleMatrix(factors)
+      // 对用户因子矩阵和电影因子矩阵做乘积，其结果为一个表示各个电影预计评级的向量（长度为1682，即电影的总数目）
       val scores = imBroadcast.value.mmul(userVector)
-      // 针对评分添加索引并排序
+      // 针对评分添加索引并根据评分排序
       val sortedWithId = scores.data.zipWithIndex.sortBy(_._1)
-      // 针对排序后的(评分,索引)中的索引值+1（索引值从0开始，但电影编号从1开始，所以需要+1），
-      // 再转换为列表
+      // 针对排序后的(评分,索引)对中的索引值+1（索引值从0开始，但电影编号从1开始，所以需要+1），再转换为列表
       val recommendedIds = sortedWithId.map(_._2 + 1).toSeq
+      // 创建(用户ID, 推荐电影ID列表)，RDD[(Int, Seq[Int])]
       (userId, recommendedIds)
     }
 
+    // 取出全部的(用户ID, 已评级电影ID列表)对，RDD[(Int, Seq[(Int, Int)])]
     val userMovies = ratings1.map { case Rating(user, product, rating) =>
       (user, product)
     }.groupBy(_._1)
@@ -242,24 +271,30 @@ object SparkALS {
       val actual = actualWithIds.map(_._2).toSeq
       avgPrecisionK(actual, predicted, K)
     }.reduce(_ + _) / allRecs.count()
-    println("Mean Average Precision at K = " + MAPK)
+    println("Mean Average Precision at K = %f".format(MAPK))
 
-    val predictedAndTrue = ratingsAndPredictions.map { case ((user, product), (predicted, actual)) =>
+    val predictedAndTrue = ratingsAndPredictions.map { case ((user, product), (actual, predicted)) =>
       (predicted, actual)
     }
+    println("predictedAndTrue:")
+    predictedAndTrue.take(K).foreach(println)
+
     // 使用(预测值,实际值)键值对创建RegressionMetrics
     val regressionMetrics = new RegressionMetrics(predictedAndTrue)
-    println("Mean Squared Error = " + regressionMetrics.meanSquaredError)
-    println("Root Mean Squared Error = " + regressionMetrics.rootMeanSquaredError)
+    println("Mean Squared Error = %f".format(regressionMetrics.meanSquaredError))
+    println("Root Mean Squared Error = %f".format(regressionMetrics.rootMeanSquaredError))
 
     val predictedAndTrueForRanking = allRecs.join(userMovies).map {
       case (userId, (predicted, actualWithIds)) =>
         val actual = actualWithIds.map(_._2)
         (predicted.toArray, actual.toArray)
     }
+    println("predictedAndTrueForRanking:")
+    predictedAndTrueForRanking.take(K).foreach(println)
+
     // 使用(预测的推荐物品ID数组,实际的物品ID数组)键值对创建RankingMetrics
     val rankingMetrics = new RankingMetrics(predictedAndTrueForRanking)
-    println("Mean Average Precision = " + rankingMetrics.meanAveragePrecision)
+    println("Mean Average Precision = %f".format(rankingMetrics.meanAveragePrecision))
 
     // 计算全局平均准确率(Mean Average Precision, MAP)
     val MAPK2000 = allRecs.join(userMovies).map {
@@ -267,7 +302,7 @@ object SparkALS {
         val actual = actualWithIds.map(_._2).toSeq
         avgPrecisionK(actual, predicted, 2000)
     }.reduce(_ + _) / allRecs.count()
-    println("Mean Average Precision = " + MAPK2000)
+    println("Mean Average Precision = %f".format(MAPK2000))
 
     sc.stop()
   }
