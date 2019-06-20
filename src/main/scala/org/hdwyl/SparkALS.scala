@@ -54,7 +54,7 @@ object SparkALS {
     val ratings2 = rawRatings2.map { case (user, movie, rating) => Rating(user.toInt, movie.toInt, rating.toDouble) }
     // println("ratings2:")
     // ratings2.take(K).foreach(println)
-    val alphas = List(5, 4, 3, 2, 1)
+    val alphas = List(5.0, 4.0, 3.0, 2.0, 1.0)
     for (alpha <- alphas) {
       // alpha参数指定了信心权重所应达到的基准线。该值越高则所训练出的模型越认为用户与他没评级过的电影之间没有相关性。
       // 方法返回一个MatrixFactorizationModel对象, 该对象将用户因子和物品因子分别保存在一个(id,factor)对类型的RDD中，
