@@ -134,6 +134,7 @@ object SparkALS {
     println("%d's productFeatures:".format(itemId))
     model1.productFeatures.lookup(itemId).map(e => e.mkString(", ")).foreach(println)
     println(model1.productFeatures.lookup(itemId).head.mkString(", "))
+    // Data Structure of the itemFactor: Array[Double]
     val itemFactor = model1.productFeatures.lookup(itemId).head
     val itemVector = new DoubleMatrix(itemFactor)
     println(cosineSimilarity(itemVector, itemVector))
