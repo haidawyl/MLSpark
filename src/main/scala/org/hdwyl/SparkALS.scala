@@ -141,6 +141,7 @@ object SparkALS {
 
     // 计算物品567与其它物品的余弦相似度
     val itemSims = model1.productFeatures.map { case (id, factor) =>
+      // Data Structure of the factor: Array[Double]
       val factorVector = new DoubleMatrix(factor)
       val sim = cosineSimilarity(factorVector, itemVector)
       (id, sim)
