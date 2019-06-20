@@ -1,5 +1,6 @@
 package org.hdwyl
 
+import org.apache.log4j.Logger
 import org.apache.spark.mllib.evaluation.{RankingMetrics, RegressionMetrics}
 import org.apache.spark.mllib.recommendation.{ALS, Rating}
 import org.apache.spark.{SparkConf, SparkContext}
@@ -9,6 +10,8 @@ import org.jblas.DoubleMatrix
   * Created by wangyanl on 2019/6/16.
   */
 object SparkALS {
+ 
+  @transient lazy val logger = Logger.getLogger(this.getClass)
 
   def main(args: Array[String]) {
     val conf = new SparkConf()
@@ -128,6 +131,9 @@ object SparkALS {
     */
 
     val itemId = 567
+    println("%d's productFeatures:".format(itemId))
+    model1.productFeatures.lookup(itemId).map(e => e.mkString(", ")).foreach(println)
+    println(model1.productFeatures.lookup(itemId).head.mkString(", "))
     val itemFactor = model1.productFeatures.lookup(itemId).head
     val itemVector = new DoubleMatrix(itemFactor)
     println(cosineSimilarity(itemVector, itemVector))
