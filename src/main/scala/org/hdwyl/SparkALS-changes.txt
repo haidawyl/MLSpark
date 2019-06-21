@@ -1,0 +1,6 @@
+factor -> factors
+user123 -> user789
+
+line 112: sortBy(_.rating) -> sortBy(_.rating).reverse
+
+line 294: predictedAndTrueForRanking -> predictedAndTrueForRanking.map(e => (e._1.mkString(", "), e._2.mkString(", ")))
