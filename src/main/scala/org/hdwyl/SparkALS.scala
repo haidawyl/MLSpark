@@ -44,11 +44,11 @@ object SparkALS {
     // User's factor: 943
     // Data Structure of the model1.userFeatures: RDD[(Int, Array[Double])]
     println("User's factor: %d".format(model1.userFeatures.count()))
-    model1.userFeatures.map { case (id, factors) => (id, factors.mkString(", ")) }.take(K).foreach(println)
+    model1.userFeatures.map { case (id, factor) => (id, factor.mkString(", ")) }.take(K).foreach(println)
     // Movie's factor: 1682
     // Data Structure of the model1.productFeatures: RDD[(Int, Array[Double])]
     println("Movie's factor: %d".format(model1.productFeatures.count()))
-    model1.productFeatures.map { case (id, factors) => (id, factors.mkString(", ")) }.take(K).foreach(println)
+    model1.productFeatures.map { case (id, factor) => (id, factor.mkString(", ")) }.take(K).foreach(println)
 
     // 隐式数据集
     val rawRatings2 = rawData.map(_.split("\t").take(3)).map(e => (e(0), e(1), if (e(2).toInt < 3) 0 else 1))
@@ -109,7 +109,7 @@ object SparkALS {
     println("用户%d评价了%d部电影".format(userId, moviesForUser.size))
 
     println("用户%d评价最高的%d部电影是:".format(userId, K))
-    moviesForUser.sortBy(_.rating).take(K).map(rating => (titles(rating.product), rating.rating)).foreach(println)
+    moviesForUser.sortBy(_.rating).reverse.take(K).map(rating => (titles(rating.product), rating.rating)).foreach(println)
 
     println("给用户%d推荐的前%d部电影是:".format(userId, K))
     topKRecs.map(rating => (titles(rating.product), rating.rating)).foreach(println)
@@ -156,19 +156,19 @@ object SparkALS {
     sortedItemSims2.slice(1, 11).map { case (id, sim) => (titles(id), sim) }.foreach(println)
 
     println("%d's userFeatures:".format(userId))
-    // Data Structure of the itemFactor: Array[Double]
+    // Data Structure of the userFactor: Array[Double]
     val userFactor = model1.userFeatures.lookup(userId).head
     val userVector = new DoubleMatrix(userFactor)
     println(cosineSimilarity(userVector, userVector))
 
-    // 计算用户123与其他用户的余弦相似度
+    // 计算用户789与其他用户的余弦相似度
     val userSims = model1.userFeatures.map { case (id, factor) =>
       // Data Structure of the factor: Array[Double]
       val factorVector = new DoubleMatrix(factor)
       val sim = cosineSimilarity(factorVector, userVector)
       (id, sim)
     }
-    // 取出与用户123最相似的前K个用户
+    // 取出与用户789最相似的前K个用户
     // top函数能分布式地计算出“前K个”结果
     // collect函数将结果返回驱动程序然后再本地排序
     val sortedUserSims = userSims.top(K)(Ordering.by[(Int, Double), Double] { case (id, similarity) => similarity })
@@ -248,9 +248,9 @@ object SparkALS {
     val imBroadcast = sc.broadcast(itemMatrix)
 
     // 计算每一个用户的推荐
-    val allRecs = model1.userFeatures.map { case (userId, factors) =>
+    val allRecs = model1.userFeatures.map { case (userId, factor) =>
       // 使用用户因子向量构建一个DoubleMatrix对象
-      val userVector = new DoubleMatrix(factors)
+      val userVector = new DoubleMatrix(factor)
       // 对用户因子矩阵和电影因子矩阵做乘积，其结果为一个表示各个电影预计评级的向量（长度为1682，即电影的总数目）
       val scores = imBroadcast.value.mmul(userVector)
       // 针对评分添加索引并根据评分排序
@@ -290,7 +290,7 @@ object SparkALS {
         (predicted.toArray, actual.toArray)
     }
     println("predictedAndTrueForRanking:")
-    predictedAndTrueForRanking.take(K).foreach(println)
+    predictedAndTrueForRanking.map(e => (e._1.mkString(", "), e._2.mkString(", "))).take(K).foreach(println)
 
     // 使用(预测的推荐物品ID数组,实际的物品ID数组)键值对创建RankingMetrics
     val rankingMetrics = new RankingMetrics(predictedAndTrueForRanking)
