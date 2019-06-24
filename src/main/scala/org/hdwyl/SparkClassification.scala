@@ -162,6 +162,20 @@ object SparkClassification {
     val matrix = new RowMatrix(vectors)
     val matrixSummary = matirx.computeColumnSummaryStatistics()
     println(matrixSummary.mean)
+    println(matrixSummary.min)
+    println(matrixSummary.max)
+    println(matrixSummary.variance)
+    println(matrixSummary.numNonzeros)
+    
+    val scaler = new StandardScaler(withMean = true, withStd = true).fit(vectors)
+    val scaledData = data.map(lp => LabeledPoint(lp.label, scaler.transform(lp.features)))
+    println(data.first.features)
+    println(scaledData.first.features)
+    
+    println((0.789131 - 0.41225805299526636) / math.sqrt(0.1097424416755897))
+    
+    // val lrModelScaled = LogisticRegressionWithSGD.train(scaledData, numIterations)
+    val lrModelScaled = new LogisticRegressionWithLBFGS().setNumClasses(2).run(scaledData)
    
     sc.stop()
   }
