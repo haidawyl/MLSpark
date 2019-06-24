@@ -20,7 +20,7 @@ object SparkClassification {
 
     val rawData = sc.textFile("hdfs://PATH/stumbleupon/train_noheader.tsv")
     val records = rawData.map(line => line.split("\t"))
-    println(records.first())
+    println(records.first().mkString(" | "))
 
     val data = records.map { r =>
       // 去掉"
