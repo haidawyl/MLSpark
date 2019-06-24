@@ -3,6 +3,7 @@ package org.hdwyl
 import org.apache.spark.mllib.classification.{NaiveBayesModel, LogisticRegressionWithLBFGS, NaiveBayes, SVMWithSGD}
 import org.apache.spark.mllib.evaluation.BinaryClassificationMetrics
 import org.apache.spark.mllib.linalg.Vectors
+import org.apache.spark.mllib.linalg.distributed.RowMatrix
 import org.apache.spark.mllib.regression.LabeledPoint
 import org.apache.spark.mllib.tree.DecisionTree
 import org.apache.spark.mllib.tree.configuration.Algo
@@ -156,6 +157,12 @@ object SparkClassification {
     allMetrics.foreach { case (m, pr, roc) =>
       println(f"$m, Area under PR: ${pr * 100.0}%2.4f%%, Area under ROC: ${roc * 100.0}%2.4f%%")
     }
+   
+    val vectors = data.map(lp => lp.features)
+    val matrix = new RowMatrix(vectors)
+    val matrixSummary = matirx.computeColumnSummaryStatistics()
+    println(matrixSummary.mean)
+   
     sc.stop()
   }
 
