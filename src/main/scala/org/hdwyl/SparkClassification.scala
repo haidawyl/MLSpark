@@ -9,7 +9,7 @@ import org.apache.spark.mllib.optimization.{Updater, SimpleUpdater, L1Updater, S
 import org.apache.spark.mllib.regression.LabeledPoint
 import org.apache.spark.mllib.tree.DecisionTree
 import org.apache.spark.mllib.tree.configuration.Algo
-import org.apache.spark.mllib.tree.impurity.Entropy
+import org.apache.spark.mllib.tree.impurity.{Impurity, Entropy, Gini}
 import org.apache.spark.rdd.RDD
 import org.apache.spark.{SparkConf, SparkContext}
 
@@ -307,6 +307,32 @@ object SparkClassification {
       createMetrics(s"$param L2 regularization parameter", scaledDataCats, model)
     }
     l2RegResults.foreach { case (param, auc) => println(f"$param, AUC = ${auc * 100}%2.2f%%") }
+    
+    val dtResultsEntropy = Seq(1, 2, 3, 4, 5, 10, 20).map { param =>
+      val model = trainDTWithParams(data, param, Entropy)
+      val scoreAndLabels = data.map { point =>
+        val score = model.predict(point.features)
+        (if (score > 0.5) 1.0 else 0.0, point.label)
+      }
+      val metrics = new BinaryClassificationMetrics(scoreAndLabels)
+      (s"$param tree depth", metrics.areaUnderROC)
+    }
+    dtResultsEntropy.foreach { case (param, auc) =>
+      println(f"$param, AUC = ${auc * 100}%2.2f%%")
+    }
+
+    val dtResultsGini = Seq(1, 2, 3, 4, 5, 10, 20).map { param =>
+      val model = trainDTWithParams(data, param, Gini)
+      val scoreAndLabels = data.map { point =>
+        val score = model.predict(point.features)
+        (if (score > 0.5) 1.0 else 0.0, point.label)
+      }
+      val metrics = new BinaryClassificationMetrics(scoreAndLabels)
+      (s"$param tree depth", metrics.areaUnderROC)
+    }
+    dtResultsGini.foreach { case (param, auc) =>
+      println(f"$param, AUC = ${auc * 100}%2.2f%%")
+    }
 
     sc.stop()
   }
@@ -325,5 +351,9 @@ object SparkClassification {
     }
     val metrics = new BinaryClassificationMetrics(scoreAndLabels)
     (label, metrics.areaUnderROC)
+  }
+  
+  def trainDTWithParams(input: RDD[LabeledPoint], maxDepth: Int, impurity: Impurity) = {
+    DecisionTree.train(input, Algo.Classification, inpurity, maxDepth)   
   }
 }
