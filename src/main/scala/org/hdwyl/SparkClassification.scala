@@ -260,7 +260,7 @@ object SparkClassification {
       LabeledPoint(label, Vectors.dense(categoryFeatures))
     }
     
-    val nbModelCats = NavieBayes.train(dataNB)
+    val nbModelCats = NaiveBayes.train(dataNB)
     val nbTotalCorrectCats = dataNB.map { point =>
       if (nbModelCats.predict(point.features) == point.label) 1 else 0
     }.sum
