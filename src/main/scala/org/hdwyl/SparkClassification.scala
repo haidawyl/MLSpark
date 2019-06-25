@@ -250,6 +250,35 @@ object SparkClassification {
       f"Accuracy: ${lrAccuracyScaledCats * 100}%2.4f%%\n" +
       f"Area under PR: ${lrPrCats * 100.0}%2.4f%%\n" +
       f"Area under ROC: ${lrRocCats * 100.0}%2.4f%%")
+    
+    val dataNB = records.map { r =>
+      val trimmed = r.map(_.replaceAll("\"", ""))
+      val label = trimmed(r.size - 1).toInt
+      val categoryIdx = categories(r(3))
+      val categoryFeatures = Array.ofDim[Double](numCategories)
+      categoryFeatures(categoryIdx) = 1.0
+      LabeledPoint(label, Vectors.dense(categoryFeatures))
+    }
+    
+    val nbModelCats = NavieBayes.train(dataNB)
+    val nbTotalCorrectCats = dataNB.map { point =>
+      if (nbModelCats.predict(point.features) == point.label) 1 else 0
+    }.sum
+    val nbAccuracyCats = nbTotalCorrectCats / numData
+    val nbPredictionsVsTrueCats = dataNB.map { point =>
+      (nbModelCats.predict(point.features), point.label)
+    }
+    val nbMetricsCats = new BinaryClassificationMetrics(nbPredictionsVsTrueCats)
+    val nbPrCats = nbMetricsCats.areaUnderPR
+    val nbRocCats = nbMetricsCats.areaUnderROC
+    // NavieBayesModel
+    // Accuracy: 60.9601%
+    // Area under PR: 74.0522%
+    // Area under ROC: 60.5138%
+    println(f"${nbMetricsCats.getClass.getSimpleName}\n" +
+      f"Accuracy: ${nbAccuracyCats * 100}%2.4f%%\n" +
+      f"Area under PR: ${nbPrCats * 100.0}%2.4f%%\n" +
+      f"Area under ROC: ${nbRocCats * 100.0}%2.4f%%")
 
     sc.stop()
   }
