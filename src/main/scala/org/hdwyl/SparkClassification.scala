@@ -5,11 +5,11 @@ import org.apache.spark.mllib.evaluation.BinaryClassificationMetrics
 import org.apache.spark.mllib.feature.StandardScaler
 import org.apache.spark.mllib.linalg.Vectors
 import org.apache.spark.mllib.linalg.distributed.RowMatrix
-import org.apache.spark.mllib.optimization.{Updater, SimpleUpdater, L1Updater, SquaredL2Updater}
+import org.apache.spark.mllib.optimization.{L1Updater, SimpleUpdater, SquaredL2Updater, Updater}
 import org.apache.spark.mllib.regression.LabeledPoint
 import org.apache.spark.mllib.tree.DecisionTree
 import org.apache.spark.mllib.tree.configuration.Algo
-import org.apache.spark.mllib.tree.impurity.{Impurity, Entropy, Gini}
+import org.apache.spark.mllib.tree.impurity.{Entropy, Gini, Impurity}
 import org.apache.spark.rdd.RDD
 import org.apache.spark.{SparkConf, SparkContext}
 
@@ -252,7 +252,7 @@ object SparkClassification {
       f"Accuracy: ${lrAccuracyScaledCats * 100}%2.4f%%\n" +
       f"Area under PR: ${lrPrCats * 100.0}%2.4f%%\n" +
       f"Area under ROC: ${lrRocCats * 100.0}%2.4f%%")
-    
+
     val dataNB = records.map { r =>
       val trimmed = r.map(_.replaceAll("\"", ""))
       val label = trimmed(r.size - 1).toInt
@@ -261,7 +261,7 @@ object SparkClassification {
       categoryFeatures(categoryIdx) = 1.0
       LabeledPoint(label, Vectors.dense(categoryFeatures))
     }
-    
+
     val nbModelCats = NaiveBayes.train(dataNB)
     val nbTotalCorrectCats = dataNB.map { point =>
       if (nbModelCats.predict(point.features) == point.label) 1 else 0
@@ -281,21 +281,21 @@ object SparkClassification {
       f"Accuracy: ${nbAccuracyCats * 100}%2.4f%%\n" +
       f"Area under PR: ${nbPrCats * 100.0}%2.4f%%\n" +
       f"Area under ROC: ${nbRocCats * 100.0}%2.4f%%")
-    
+
     scaledDataCats.cache
-    
+
     val iterResults = Seq(1, 5, 10, 50).map { param =>
       val model = trainWithParams(scaledDataCats, 0.0, param, new SimpleUpdater, 1.0)
       createMetrics(s"$param iterations", scaledDataCats, model)
     }
     iterResults.foreach { case (param, auc) => println(f"$param, AUC = ${auc * 100}%2.2f%%") }
-    
+
     val stepResults = Seq(0.001, 0.01, 0.1, 1.0, 10.0).map { param =>
       val model = trainWithParams(scaledDataCats, 0.0, numIterations, new SimpleUpdater, param)
       createMetrics(s"$param step size", scaledDataCats, model)
     }
     stepResults.foreach { case (param, auc) => println(f"$param, AUC = ${auc * 100}%2.2f%%") }
-    
+
     val l1RegResults = Seq(0.001, 0.01, 0.1, 1.0, 10.0).map { param =>
       val model = trainWithParams(scaledDataCats, param, numIterations, new L1Updater, 1.0)
       createMetrics(s"$param L1 regularization parameter", scaledDataCats, model)
@@ -307,7 +307,7 @@ object SparkClassification {
       createMetrics(s"$param L2 regularization parameter", scaledDataCats, model)
     }
     l2RegResults.foreach { case (param, auc) => println(f"$param, AUC = ${auc * 100}%2.2f%%") }
-    
+
     val dtResultsEntropy = Seq(1, 2, 3, 4, 5, 10, 20).map { param =>
       val model = trainDTWithParams(data, param, Entropy)
       val scoreAndLabels = data.map { point =>
@@ -334,6 +334,31 @@ object SparkClassification {
       println(f"$param, AUC = ${auc * 100}%2.2f%%")
     }
 
+    val nbResults = Seq(0.001, 0.01, 0.1, 1.0, 10.0).map { param =>
+      val model = trainNBWithParams(dataNB, param)
+      val scoreAndLabels = dataNB.map { point =>
+        (model.predict(point.features), point.label)
+      }
+      val metrics = new BinaryClassificationMetrics(scoreAndLabels)
+      (s"$param lambda", metrics.areaUnderROC())
+    }
+    nbResults.foreach { case (param, auc) =>
+      println(f"$param, AUC = ${auc * 100}%2.2f%%")
+    }
+
+    // 将数据集分成60%的训练集和40%的测试集（使用一个固定的随机种子123来保证每次实验能得到相同的结果）
+    val trainTestSplit = scaledDataCats.randomSplit(Array(0.6, 0.4), 123)
+    val train = trainTestSplit(0)
+    val test = trainTestSplit(1)
+
+    val regResultsTest = Seq(0.0, 0.001, 0.0025, 0.005, 0.01).map { param =>
+      val model = trainWithParams(train, param, numIterations, new SquaredL2Updater, 1.0)
+      createMetrics(s"$param L2 regularization parameter", test, model)
+    }
+    regResultsTest.foreach { case (param, auc) =>
+      println(f"$param, AUC = ${auc * 100}%2.6f%%")
+    }
+
     sc.stop()
   }
 
@@ -344,7 +369,7 @@ object SparkClassification {
     lr.optimizer.setNumIterations(numIterations).setUpdater(updater).setRegParam(regParam)
     lr.run(input)
   }
-  
+
   def createMetrics(label: String, data: RDD[LabeledPoint], model: ClassificationModel) = {
     val scoreAndLabels = data.map { point =>
       (model.predict(point.features), point.label)
@@ -352,8 +377,14 @@ object SparkClassification {
     val metrics = new BinaryClassificationMetrics(scoreAndLabels)
     (label, metrics.areaUnderROC)
   }
-  
+
   def trainDTWithParams(input: RDD[LabeledPoint], maxDepth: Int, impurity: Impurity) = {
-    DecisionTree.train(input, Algo.Classification, inpurity, maxDepth)   
+    DecisionTree.train(input, Algo.Classification, impurity, maxDepth)
+  }
+
+  def trainNBWithParams(input: RDD[LabeledPoint], lambda: Double) = {
+    val nb = new NaiveBayes()
+    nb.setLambda(lambda)
+    nb.run(input)
   }
 }
