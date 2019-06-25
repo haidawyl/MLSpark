@@ -283,6 +283,30 @@ object SparkClassification {
       f"Area under ROC: ${nbRocCats * 100.0}%2.4f%%")
     
     scaledDataCats.cache
+    
+    val iterResults = Seq(1, 5, 10, 50).map { param =>
+      val model = trainWithParams(scaledDataCats, 0.0, param, new SimpleUpdater, 1.0)
+      createMetrics(s"$param iterations", scaledDataCats, model)
+    }
+    iterResults.foreach { case (param, auc) => println(f"$param, AUC = ${auc * 100}%2.2f%%") }
+    
+    val stepResults = Seq(0.001, 0.01, 0.1, 1.0, 10.0).map { param =>
+      val model = trainWithParams(scaledDataCats, 0.0, numIterations, new SimpleUpdater, param)
+      createMetrics(s"$param step size", scaledDataCats, model)
+    }
+    stepResults.foreach { case (param, auc) => println(f"$param, AUC = ${auc * 100}%2.2f%%") }
+    
+    val l1RegResults = Seq(0.001, 0.01, 0.1, 1.0, 10.0).map { param =>
+      val model = trainWithParams(scaledDataCats, param, numIterations, new L1Updater, 1.0)
+      createMetrics(s"$param L1 regularization parameter", scaledDataCats, model)
+    }
+    l1RegResults.foreach { case (param, auc) => println(f"$param, AUC = ${auc * 100}%2.2f%%") }
+
+    val l2RegResults = Seq(0.001, 0.01, 0.1, 1.0, 10.0).map { param =>
+      val model = trainWithParams(scaledDataCats, param, numIterations, new SquaredL2Updater, 1.0)
+      createMetrics(s"$param L2 regularization parameter", scaledDataCats, model)
+    }
+    l2RegResults.foreach { case (param, auc) => println(f"$param, AUC = ${auc * 100}%2.2f%%") }
 
     sc.stop()
   }
