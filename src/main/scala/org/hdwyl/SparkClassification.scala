@@ -1,14 +1,16 @@
 package org.hdwyl
 
-import org.apache.spark.mllib.classification.{LogisticRegressionWithLBFGS, NaiveBayes, SVMWithSGD}
+import org.apache.spark.mllib.classification.{ClassificationModel, LogisticRegressionWithLBFGS, NaiveBayes, SVMWithSGD}
 import org.apache.spark.mllib.evaluation.BinaryClassificationMetrics
 import org.apache.spark.mllib.feature.StandardScaler
 import org.apache.spark.mllib.linalg.Vectors
 import org.apache.spark.mllib.linalg.distributed.RowMatrix
+import org.apache.spark.mllib.optimization.{Updater, SimpleUpdater, L1Updater, SquaredL2Updater}
 import org.apache.spark.mllib.regression.LabeledPoint
 import org.apache.spark.mllib.tree.DecisionTree
 import org.apache.spark.mllib.tree.configuration.Algo
 import org.apache.spark.mllib.tree.impurity.Entropy
+import org.apache.spark.rdd.RDD
 import org.apache.spark.{SparkConf, SparkContext}
 
 /**
@@ -279,8 +281,25 @@ object SparkClassification {
       f"Accuracy: ${nbAccuracyCats * 100}%2.4f%%\n" +
       f"Area under PR: ${nbPrCats * 100.0}%2.4f%%\n" +
       f"Area under ROC: ${nbRocCats * 100.0}%2.4f%%")
+    
+    scaledDataCats.cache
 
     sc.stop()
   }
 
+  def trainWithParams(input: RDD[LabeledPoint], regParam: Double, numIterations: Int, updater: Updater, stepSize: Double) = {
+    // val lr = new LogisticRegressionWithSGD
+    // lr.optimizer.setNumIterations(numIterations).setUpdater(updater).setRegParam(regParam).setStepSize(stepSize)
+    val lr = new LogisticRegressionWithLBFGS
+    lr.optimizer.setNumIterations(numIterations).setUpdater(updater).setRegParam(regParam)
+    lr.run(input)
+  }
+  
+  def createMetrics(label: String, data: RDD[LabeledPoint], model: ClassificationModel) = {
+    val scoreAndLabels = data.map { point =>
+      (model.predict(point.features), point.label)
+    }
+    val metrics = new BinaryClassificationMetrics(scoreAndLabels)
+    (label, metrics.areaUnderROC)
+  }
 }
