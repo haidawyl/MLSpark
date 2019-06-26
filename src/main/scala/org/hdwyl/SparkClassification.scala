@@ -29,10 +29,11 @@ object SparkClassification {
     val data = records.map { r =>
       // 去掉"
       val trimmed = r.map(_.replaceAll("\"", ""))
-      // 标记变量
+      // 提取目标变量，即最后一列
       val label = trimmed(r.size - 1).toInt
-      // 特征矩阵，处理缺失数据(?变为0.0)
+      // 提取特征向量，同时处理缺失数据(?变为0.0)
       val features = trimmed.slice(4, r.size - 1).map(d => if (d == "?") 0.0 else d.toDouble)
+      // 分类模型通过LabeledPoint对象操作，其中封装了目标变量（标签）和特征向量
       LabeledPoint(label, Vectors.dense(features))
     }
     // 缓存数据
@@ -41,20 +42,22 @@ object SparkClassification {
     // numData = 7395
     println("numData = %d".format(numData))
 
+    // 朴素贝叶斯模型的训练数据，特征值非负
     val nbData = records.map { r =>
       // 去掉"
       val trimmed = r.map(_.replaceAll("\"", ""))
-      // 标记变量
+      // 提取目标变量，即最后一列
       val label = trimmed(r.size - 1).toInt
-      // 特征矩阵，处理缺失数据(?变为0.0，负数变为0.0)
+      // 提取特征向量，同时处理缺失数据(?变为0.0，负数变为0.0)
       val features = trimmed.slice(4, r.size - 1).map(d => if (d == "?") 0.0 else d.toDouble)
         .map(d => if (d < 0) 0.0 else d)
+      // 分类模型通过LabeledPoint对象操作，其中封装了目标变量（标签）和特征向量
       LabeledPoint(label, Vectors.dense(features))
     }
     // 缓存数据
     nbData.cache()
 
-    // 迭代次数，用户逻辑回归和SVM模型
+    // 迭代次数，用于逻辑回归和SVM模型
     val numIterations = 10
     // 最大树深度，用于决策树模型
     val maxTreeDepth = 5
