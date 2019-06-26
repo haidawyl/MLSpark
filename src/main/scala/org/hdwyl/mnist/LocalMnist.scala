@@ -1,5 +1,7 @@
 package org.hdwyl.mnist
 
+import org.hdwyl.Utils
+
 /**
   * Created by wangyanl on 2019/6/22.
   */
@@ -15,13 +17,20 @@ object LocalMnist {
     println("imageHeight = %d".format(imageHeight))
 
     val imagesAsMatrices = imageReader.imagesAsMatrices
-    println(imagesAsMatrices.take(1).toVector)
-    val imagesAsVectors = imageReader.imagesAsVectors
-    println(imagesAsVectors.take(1).toVector)
-
+    println("Images count: %d".format(imagesAsMatrices.size))
     val labelsAsInts = labelReader.labelsAsInts
-    println(labelsAsInts.take(1).toVector)
+    println("Labels count: %d".format(labelsAsInts.size))
+
+    for (i <- 0 until 10) {
+      // Utils.printMatrix(imagesAsMatrices.toList(i), imageWidth)
+      println("label = %d".format(labelsAsInts.toList(i)))
+    }
+
+    val imagesAsVectors = imageReader.imagesAsVectors
+    println(imagesAsVectors.size)
+
     val labelsAsVectors = labelReader.labelsAsVectors
     println(labelsAsVectors.take(1).toVector)
   }
+
 }

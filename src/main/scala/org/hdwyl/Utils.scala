@@ -1,5 +1,6 @@
 package org.hdwyl
 
+import breeze.linalg.DenseMatrix
 import org.apache.spark.rdd.RDD
 
 /**
@@ -18,6 +19,17 @@ object Utils {
     }
 
     return median
+  }
+
+  def printMatrix(matrix: DenseMatrix[Double], width: Int) = {
+    val array = matrix.toArray
+    for (i <- 0 until array.size) {
+      if (i > 0 && (i + 1) % width == 0) {
+        println(array(i).toString())
+      } else {
+        print(array(i).toString() + "\t")
+      }
+    }
   }
 
 }

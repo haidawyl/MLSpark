@@ -10,11 +10,11 @@ class MnistImageReader(path: String) extends MnistFileReader(path) {
   assert(stream.readInt() == 2051, "Wrong MNIST image stream magic")
 
   val count = stream.readInt()
-  val width = stream.readInt()
   val height = stream.readInt()
+  val width = stream.readInt()
 
   val imagesAsMatrices = readImages(0)
-  val imagesAsVectors = imagesAsMatrices map { image =>
+  val imagesAsVectors = imagesAsMatrices.map { image =>
     DenseVector.tabulate(width * height) { i => image(i / width, i % height) / 255.0 }
   }
 
@@ -29,7 +29,7 @@ class MnistImageReader(path: String) extends MnistFileReader(path) {
     val m = DenseMatrix.zeros[Int](height, width)
 
     for (y <- 0 until height; x <- 0 until width)
-      m(y, x) = stream.readUnsignedByte()
+      m(x, y) = stream.readUnsignedByte()
     return m
   }
 
