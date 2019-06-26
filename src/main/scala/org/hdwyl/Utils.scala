@@ -25,9 +25,9 @@ object Utils {
     val array = matrix.toArray
     for (i <- 0 until array.size) {
       if (i > 0 && (i + 1) % width == 0) {
-        println(array(i).toString())
+        println(array(i).toInt.toString())
       } else {
-        print(array(i).toString() + "\t")
+        print(array(i).toInt.toString() + "\t")
       }
     }
   }

@@ -22,7 +22,7 @@ object LocalMnist {
     println("Labels count: %d".format(labelsAsInts.size))
 
     for (i <- 0 until 10) {
-      // Utils.printMatrix(imagesAsMatrices.toList(i), imageWidth)
+      Utils.printMatrix(imagesAsMatrices.toList(i), imageWidth)
       println("label = %d".format(labelsAsInts.toList(i)))
     }
 

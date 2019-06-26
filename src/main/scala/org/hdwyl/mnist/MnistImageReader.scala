@@ -18,15 +18,15 @@ class MnistImageReader(path: String) extends MnistFileReader(path) {
     DenseVector.tabulate(width * height) { i => image(i / width, i % height) / 255.0 }
   }
 
-  private[this] def readImages(ind: Int): Stream[DenseMatrix[Int]] =
+  private[this] def readImages(ind: Int): Stream[DenseMatrix[Double]] =
     if (ind >= count) {
       Stream.empty
     } else {
       Stream.cons(readImage(), readImages(ind + 1))
     }
 
-  private[this] def readImage(): DenseMatrix[Int] = {
-    val m = DenseMatrix.zeros[Int](height, width)
+  private[this] def readImage(): DenseMatrix[Double] = {
+    val m = DenseMatrix.zeros[Double](height, width)
 
     for (y <- 0 until height; x <- 0 until width)
       m(x, y) = stream.readUnsignedByte()
