@@ -33,7 +33,7 @@ object SparkMnist {
       println("label = %d".format(labelsAsInts.toList(i)))
     }
 
-    val data = imagesAsMatrices.zipWithIndex.map { case (image, index) =>
+    val data = sc.parallelize(imagesAsMatrices).zipWithIndex.map { case (image, index) =>
       val features = image.toArray
       val label = labelsAsInts.toList(index)
       LabeledPoint(label, Vectors.dense(features))
@@ -45,7 +45,7 @@ object SparkMnist {
     val maxTreeDepth = 5
 
     // 训练逻辑回归模型
-//    val lrModel = new LogisticRegressionWithLBFGS().setNumClasses(10).run(data)
+    val lrModel = new LogisticRegressionWithLBFGS().setNumClasses(10).run(data)
 
 
     sc.stop()
