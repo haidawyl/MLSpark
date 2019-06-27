@@ -42,7 +42,7 @@ object SparkClassification {
     // numData = 7395
     println("numData = %d".format(numData))
 
-    // 朴素贝叶斯模型的训练数据，特征值非负
+    // 朴素贝叶斯模型的训练数据，特征值必须非负
     val nbData = records.map { r =>
       // 去掉"
       val trimmed = r.map(_.replaceAll("\"", ""))
@@ -75,16 +75,20 @@ object SparkClassification {
     // 训练决策树模型
     val dtModel = DecisionTree.train(data, Algo.Classification, Entropy, maxTreeDepth)
 
+    // 使用模型对单个数据进行预测
     val dataPoint = data.first()
     val prediction = lrModel.predict(dataPoint.features)
     println("prediction = %f".format(prediction))
+    // 数据的真实标签
     val trueLabel = dataPoint.label
     println("trueLabel = %f".format(trueLabel))
 
     val K = 10
+    // 使用模型对整体数据进行预测
     val predictions = lrModel.predict(data.map(lp => lp.features))
     println("predictions:")
     predictions.take(K).foreach(println)
+    // 对应数据的真实标签
     println("trueLabels:")
     data.map(lp => lp.label).take(K).foreach(println)
 
