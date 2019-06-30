@@ -15,7 +15,7 @@ class MnistImageReader(path: String) extends MnistFileReader(path) {
 
   val imagesAsMatrices = readImages(0)
   val imagesAsVectors = imagesAsMatrices.map { image =>
-    DenseVector.tabulate(width * height) { i => image(i / width, i % height) / 255.0 }
+    DenseVector.tabulate(width * height) { i => image(i % height, i / width) }
   }
 
   private[this] def readImages(ind: Int): Stream[DenseMatrix[Double]] =

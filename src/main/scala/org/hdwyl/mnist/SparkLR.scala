@@ -26,10 +26,15 @@ object SparkLR {
     val trainImagesAsMatrices = MnistHdfsReader.loadFeature(sc, trainFeatureFile)
     val trainLabelsAsInts = MnistHdfsReader.loadLabels(sc, trainLabelFile)
 
+    /*
     val trainData = sc.parallelize(trainImagesAsMatrices).zipWithIndex.map { case (image, index) =>
       val features = image.toArray
       val label = trainLabelsAsInts.toList(index.toInt)
       LabeledPoint(label, Vectors.dense(features))
+    }
+    */
+    val trainData = sc.parallelize(trainImagesAsMatrices zip trainLabelsAsInts).map { case (image, label) =>
+      LabeledPoint(label, Vectors.dense(image.toArray))
     }
 
     // 测试数据集
@@ -39,10 +44,15 @@ object SparkLR {
     val testImagesAsMatrices = MnistHdfsReader.loadFeature(sc, testFeatureFile)
     val testLabelsAsInts = MnistHdfsReader.loadLabels(sc, testLabelFile)
 
+    /*
     val testData = sc.parallelize(testImagesAsMatrices).zipWithIndex.map { case (image, index) =>
       val features = image.toArray
       val label = testLabelsAsInts.toList(index.toInt)
       LabeledPoint(label, Vectors.dense(features))
+    }
+    */
+    val testData = sc.parallelize(testImagesAsMatrices zip testLabelsAsInts).map { case (image, label) =>
+      LabeledPoint(label, Vectors.dense(image.toArray))
     }
 
     // 训练逻辑回归模型
