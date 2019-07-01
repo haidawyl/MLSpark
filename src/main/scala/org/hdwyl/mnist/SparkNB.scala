@@ -33,6 +33,7 @@ object SparkNB {
     val trainData = sc.parallelize(trainImagesAsMatrices zip trainLabelsAsInts).map { case (image, label) =>
       LabeledPoint(label, Vectors.dense(image.toArray))
     }
+    trainData.cache()
 
     // 测试数据集
     val testFeatureFile = "hdfs://PATH/mnist/t10k-images.idx3-ubyte"
@@ -51,6 +52,7 @@ object SparkNB {
     val testData = sc.parallelize(testImagesAsMatrices zip testLabelsAsInts).map { case (image, label) =>
       LabeledPoint(label, Vectors.dense(image.toArray))
     }
+    testData.cache()
 
     // 训练朴素贝叶斯模型
     val nbModel = NaiveBayes.train(trainData)
