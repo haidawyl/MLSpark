@@ -38,6 +38,7 @@ object SparkSVM {
     val trainData = sc.parallelize(trainImagesAsMatrices zip trainLabelsAsInts).map { case (image, label) =>
       LabeledPoint(label, Vectors.dense(image.toArray))
     }
+    trainData.cache()
 
     // 测试数据集
     val testFeatureFile = "hdfs://PATH/mnist/t10k-images.idx3-ubyte"
@@ -56,6 +57,7 @@ object SparkSVM {
     val testData = sc.parallelize(testImagesAsMatrices zip testLabelsAsInts).map { case (image, label) =>
       LabeledPoint(label, Vectors.dense(image.toArray))
     }
+    testData.cache()
 
     // 迭代次数，用于逻辑回归和SVM模型
     val numIterations = 10
