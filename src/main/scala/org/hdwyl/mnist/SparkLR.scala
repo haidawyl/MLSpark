@@ -36,6 +36,7 @@ object SparkLR {
     val trainData = sc.parallelize(trainImagesAsMatrices zip trainLabelsAsInts).map { case (image, label) =>
       LabeledPoint(label, Vectors.dense(image.toArray))
     }
+    trainData.cache()
 
     // 测试数据集
     val testFeatureFile = "hdfs://PATH/mnist/t10k-images.idx3-ubyte"
@@ -54,6 +55,7 @@ object SparkLR {
     val testData = sc.parallelize(testImagesAsMatrices zip testLabelsAsInts).map { case (image, label) =>
       LabeledPoint(label, Vectors.dense(image.toArray))
     }
+    testData.cache()
 
     // 训练逻辑回归模型
     val lrModel = new LogisticRegressionWithLBFGS().setNumClasses(10).run(trainData)
@@ -126,10 +128,6 @@ object SparkLR {
     println("标准化之后的特征:")
     println(scaledTrainData.first.features)
 
-    // 使用标准化之前的第一个特征减去该列的均值，然后除以该列的标准差（方差的平方根），结果等于标准化之后的第一个特征值
-    // TODO 替换为实际值
-    println((0.789131 - 0.41225805299526636) / math.sqrt(0.1097424416755897))
-
     // 使用标准化之后的数据重新训练模型
     val lrModelScaled = new LogisticRegressionWithLBFGS().setNumClasses(10).run(scaledTrainData)
     val lrTotalCorrectScaled = scaledTrainData.map { point =>
@@ -145,7 +143,7 @@ object SparkLR {
       f"WeightedRecall: ${scaledMetrics.weightedRecall * 100.0}%2.4f%%, WeightedFMeasure: ${scaledMetrics.weightedFMeasure * 100.0}%2.4f%%")
 
     // 迭代次数调优
-    val iterResults = Seq(1, 5, 10, 50).map { param =>
+    val iterResults = Seq(1, 5, 10, 20, 30, 40, 50).map { param =>
       val model = trainWithParams(scaledTrainData, 0.0, param, new SimpleUpdater)
       createMetrics(s"$param iterations", scaledTrainData, model)
     }
@@ -155,14 +153,14 @@ object SparkLR {
     val numIterations = 10
 
     // L1正则化调优
-    val l1RegResults = Seq(0.001, 0.01, 0.1, 1.0, 10.0).map { param =>
+    val l1RegResults = Seq(0.00001, 0.0001, 0.001, 0.01, 0.1, 1.0, 10.0).map { param =>
       val model = trainWithParams(scaledTrainData, param, numIterations, new L1Updater)
       createMetrics(s"$param L1 regularization parameter", scaledTrainData, model)
     }
     l1RegResults.foreach { case (param, accuracy) => println(f"$param, Accuracy = ${accuracy * 100}%2.2f%%") }
 
     // L2正则化调优
-    val l2RegResults = Seq(0.001, 0.01, 0.1, 1.0, 10.0).map { param =>
+    val l2RegResults = Seq(0.00001, 0.0001, 0.001, 0.01, 0.1, 1.0, 10.0).map { param =>
       val model = trainWithParams(scaledTrainData, param, numIterations, new SquaredL2Updater)
       createMetrics(s"$param L2 regularization parameter", scaledTrainData, model)
     }
