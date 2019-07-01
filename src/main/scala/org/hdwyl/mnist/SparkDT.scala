@@ -35,6 +35,7 @@ object SparkDT {
     val trainData = sc.parallelize(trainImagesAsMatrices zip trainLabelsAsInts).map { case (image, label) =>
       LabeledPoint(label, Vectors.dense(image.toArray))
     }
+    trainData.cache()
 
     // 测试数据集
     val testFeatureFile = "hdfs://PATH/mnist/t10k-images.idx3-ubyte"
@@ -53,6 +54,7 @@ object SparkDT {
     val testData = sc.parallelize(testImagesAsMatrices zip testLabelsAsInts).map { case (image, label) =>
       LabeledPoint(label, Vectors.dense(image.toArray))
     }
+    testData.cache()
 
     // 最大树深度，用于决策树模型
     val maxTreeDepth = 5
