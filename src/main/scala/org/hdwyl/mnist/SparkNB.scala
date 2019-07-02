@@ -103,7 +103,7 @@ object SparkNB {
 
     // lamda参数在朴素贝叶斯模型中可以控制相加式平滑（additive smoothing），
     // 解决数据中某个类别和某个特征值的组合没有同时出现的问题。
-    val nbResults = Seq(0.001, 0.01, 0.1, 1.0, 10.0).map { param =>
+    val nbResults = Seq(0.00001, 0.0001, 0.001, 0.01, 0.1, 1.0, 10.0).map { param =>
       val model = trainWithParams(trainData, param, modelType)
       val scoreAndLabels = trainData.map { point =>
         (model.predict(point.features), point.label)
@@ -116,7 +116,8 @@ object SparkNB {
     }
 
     // 交叉验证
-    val nbResultsCrossValidation = Seq(0.001, 0.01, 0.1, 1.0, 10.0).map { param =>
+    println("交叉验证")
+    val nbResultsCrossValidation = Seq(0.00001, 0.0001, 0.001, 0.01, 0.1, 1.0, 10.0).map { param =>
       val model = trainWithParams(trainData, param, modelType)
       val scoreAndLabels = testData.map { point =>
         (model.predict(point.features), point.label)
