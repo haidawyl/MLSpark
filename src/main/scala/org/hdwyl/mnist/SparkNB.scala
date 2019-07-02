@@ -25,13 +25,14 @@ object SparkNB {
 
     /*
     val trainData = sc.parallelize(trainImagesAsMatrices).zipWithIndex.map { case (image, index) =>
-      val features = image.toArray
+      val features = image.toArray.map(d => if (d < 0) 0.0 else d)
       val label = trainLabelsAsInts.toList(index.toInt)
       LabeledPoint(label, Vectors.dense(features))
     }
     */
     val trainData = sc.parallelize(trainImagesAsMatrices zip trainLabelsAsInts).map { case (image, label) =>
-      LabeledPoint(label, Vectors.dense(image.toArray))
+      val features = image.toArray.map(d => if (d < 0) 0.0 else d)
+      LabeledPoint(label, Vectors.dense(features))
     }
     trainData.cache()
 
@@ -44,13 +45,14 @@ object SparkNB {
 
     /*
     val testData = sc.parallelize(testImagesAsMatrices).zipWithIndex.map { case (image, index) =>
-      val features = image.toArray
+      val features = image.toArray.map(d => if (d < 0) 0.0 else d)
       val label = testLabelsAsInts.toList(index.toInt)
       LabeledPoint(label, Vectors.dense(features))
     }
     */
     val testData = sc.parallelize(testImagesAsMatrices zip testLabelsAsInts).map { case (image, label) =>
-      LabeledPoint(label, Vectors.dense(image.toArray))
+      val features = image.toArray.map(d => if (d < 0) 0.0 else d)
+      LabeledPoint(label, Vectors.dense(features))
     }
     testData.cache()
 
