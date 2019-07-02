@@ -223,9 +223,9 @@ object SparkClassification {
     val lrPr = lrMetricsScaled.areaUnderPR()
     val lrRoc = lrMetricsScaled.areaUnderROC()
     // LogisticRegressionModel
-    // Accuracy: 62.0419%
-    // Area under PR: 72.7254%
-    // Area under ROC: 61.9663%
+    // Accuracy: 62.7316%
+    // Area under PR: 73.6036%
+    // Area under ROC: 62.5696%
     println(f"${lrModelScaled.getClass.getSimpleName}\n" +
       f"Accuracy: ${lrAccuracyScaled * 100}%2.4f%%\n" +
       f"Area under PR: ${lrPr * 100.0}%2.4f%%\n" +
@@ -244,10 +244,9 @@ object SparkClassification {
     val svmPr = svmMetricsScaled.areaUnderPR()
     val svmRoc = svmMetricsScaled.areaUnderROC()
     // SVMModel
-    // TODO 替换为实际值
-    // Accuracy: 62.0419%
-    // Area under PR: 72.7254%
-    // Area under ROC: 61.9663%
+    // Accuracy: 62.0284%
+    // Area under PR: 73.6036%
+    // Area under ROC: 62.5696%
     println(f"${svmModelScaled.getClass.getSimpleName}\n" +
       f"Accuracy: ${svmAccuracyScaled * 100}%2.4f%%\n" +
       f"Area under PR: ${svmPr * 100.0}%2.4f%%\n" +
@@ -312,9 +311,9 @@ object SparkClassification {
     val lrRocCats = lrMetricsScaledCats.areaUnderROC()
 
     // LogisticRegressionModel
-    // Accuracy: 66.5720%
-    // Area under PR: 75.7964%
-    // Area under ROC: 66.5483%
+    // Accuracy: 66.8830%
+    // Area under PR: 76.2921%
+    // Area under ROC: 66.7640%
     println(f"${lrModelScaledCats.getClass.getSimpleName}\n" +
       f"Accuracy: ${lrAccuracyScaledCats * 100}%2.4f%%\n" +
       f"Area under PR: ${lrPrCats * 100.0}%2.4f%%\n" +
@@ -332,6 +331,10 @@ object SparkClassification {
     val svmMetricsScaledCats = new BinaryClassificationMetrics(svmPredictionsVsTrueCats)
     val svmPrCats = svmMetricsScaledCats.areaUnderPR()
     val svmRocCats = svmMetricsScaledCats.areaUnderROC()
+    // SVMModel
+    // Accuracy: 66.4503%
+    // Area under PR: 75.7511%
+    // Area under ROC: 66.4103%
     println(f"${svmModelScaledCats.getClass.getSimpleName}\n" +
       f"Accuracy: ${svmAccuracyScaledCats * 100}%2.4f%%\n" +
       f"Area under PR: ${svmPrCats * 100.0}%2.4f%%\n" +
@@ -372,9 +375,9 @@ object SparkClassification {
     val nbPrCats = nbMetricsCats.areaUnderPR
     val nbRocCats = nbMetricsCats.areaUnderROC
     // NavieBayesModel
-    // Accuracy: 60.9601%
-    // Area under PR: 74.0522%
-    // Area under ROC: 60.5138%
+    // Accuracy: 58.3232%
+    // Area under PR: 68.3386%
+    // Area under ROC: 58.6397%
     println(f"${nbMetricsCats.getClass.getSimpleName}\n" +
       f"Accuracy: ${nbAccuracyCats * 100}%2.4f%%\n" +
       f"Area under PR: ${nbPrCats * 100.0}%2.4f%%\n" +
@@ -394,6 +397,10 @@ object SparkClassification {
     val dtMetricsCats = new BinaryClassificationMetrics(dtPredictionsVsTrueCats)
     val dtPrCats = dtMetricsCats.areaUnderPR()
     val dtRocCats = dtMetricsCats.areaUnderROC()
+    // DecisionTreeModel
+    // Accuracy: 66.5585%
+    // Area under PR: 75.8784%
+    // Area under ROC: 66.5005%
     println(f"${dtMetricsCats.getClass.getSimpleName}\n" +
       f"Accuracy: ${dtAccuracyCats * 100}%2.4f%%\n" +
       f"Area under PR: ${dtPrCats * 100.0}%2.4f%%\n" +
@@ -425,6 +432,10 @@ object SparkClassification {
     val nbMetricsOnlyCats = new BinaryClassificationMetrics(nbPredictionsVsTrueOnlyCats)
     val nbPrOnlyCats = nbMetricsOnlyCats.areaUnderPR()
     val nbRocOnlyCats = nbMetricsOnlyCats.areaUnderROC()
+    // NaiveBayesModel
+    // Accuracy: 60.9601%
+    // Area under PR: 74.0522%
+    // Area under ROC: 60.5138%
     println(f"${nbModelOnlyCats.getClass.getSimpleName}\n" +
       f"Accuracy: ${nbAccuracyOnlyCats * 100}%2.4f%%\n" +
       f"Area under PR: ${nbPrOnlyCats * 100.0}%2.4f%%\n" +
