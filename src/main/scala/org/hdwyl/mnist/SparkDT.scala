@@ -57,10 +57,17 @@ object SparkDT {
     testData.cache()
 
     // 最大树深度，用于决策树模型
-    val maxTreeDepth = 5
+    val maxDepth = 5
+    val maxBins = 32
+    // 
+    val numClasses = 10
+    
+    // Empty categoricalFeaturesInfo indicates all features are continuous.
+    val categoricalFeaturesInfo = Map[Int, Int]()
 
     // 训练决策树模型
-    val dtModel = DecisionTree.train(trainData, Algo.Classification, Entropy, maxTreeDepth)
+    // val dtModel = DecisionTree.train(trainData, Algo.Classification, Entropy, maxDepth)
+    val dtModel = DecisionTree.trainClassifier(trainData, numClasses, categoricalFeaturesInfo, "entropy", maxDepth, maxBins)
 
     // 使用模型对单个数据进行预测
     val dataPoint = trainData.first()
@@ -81,12 +88,10 @@ object SparkDT {
 
     // 计算模型的正确率，决策树模型的预测阈值需要明确给出
     val dtTotalCorrect = trainData.map { point =>
-      val score = dtModel.predict(point.features)
-      val predicted = if (score > 0.5) 1 else 0
-      if (predicted == point.label) 1 else 0
+      if (dtModel.predict(point.features) == point.label) 1 else 0
     }.sum
     val dtAccuracy = dtTotalCorrect / trainData.count
-    println(f"dtAccuracy = ${dtAccuracy}%f")
+    println(f"dtAccuracy = ${dtAccuracy * 100.0}%2.4f%%")
 
     // 评估模型
     val metrics = Seq(dtModel).map { model =>
@@ -111,8 +116,7 @@ object SparkDT {
     val dtResultsEntropy = Seq(1, 2, 3, 4, 5, 10, 20).map { param =>
       val model = trainWithParams(trainData, param, Entropy)
       val scoreAndLabels = trainData.map { point =>
-        val score = model.predict(point.features)
-        (if (score > 0.5) 1.0 else 0.0, point.label)
+        (model.predict(point.features), point.label)
       }
       val metrics = new MulticlassMetrics(scoreAndLabels)
       (s"$param tree depth", metrics.accuracy)
@@ -126,8 +130,7 @@ object SparkDT {
     val dtResultsGini = Seq(1, 2, 3, 4, 5, 10, 20).map { param =>
       val model = trainWithParams(trainData, param, Gini)
       val scoreAndLabels = trainData.map { point =>
-        val score = model.predict(point.features)
-        (if (score > 0.5) 1.0 else 0.0, point.label)
+        (model.predict(point.features), point.label)
       }
       val metrics = new MulticlassMetrics(scoreAndLabels)
       (s"$param tree depth", metrics.accuracy)
@@ -141,8 +144,7 @@ object SparkDT {
     val dtResultsEntropyCrossValidation = Seq(1, 2, 3, 4, 5, 10, 20).map { param =>
       val model = trainWithParams(trainData, param, Entropy)
       val scoreAndLabels = testData.map { point =>
-        val score = model.predict(point.features)
-        (if (score > 0.5) 1.0 else 0.0, point.label)
+        (model.predict(point.features), point.label)
       }
       val metrics = new MulticlassMetrics(scoreAndLabels)
       (s"$param tree depth", metrics.accuracy)
