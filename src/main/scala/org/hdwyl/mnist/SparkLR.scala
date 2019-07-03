@@ -82,7 +82,7 @@ object SparkLR {
       if (lrModel.predict(point.features) == point.label) 1 else 0
     }.sum
     val lrAccuracy = lrTotalCorrect / trainData.count
-    println(f"lrAccuracy = ${lrAccuracy}%f")
+    println(f"lrAccuracy = ${lrAccuracy * 100.0}%2.4f%%")
 
     // 评估模型
     val metrics = Seq(lrModel).map { model =>
@@ -106,15 +106,15 @@ object SparkLR {
     // 包括均值和方差，所有统计值按每列一项的方式存储在一个Vector中
     val matrixSummary = matrix.computeColumnSummaryStatistics()
     // 输出矩阵每列的均值
-    println(matrixSummary.mean)
+    println("mean = " + matrixSummary.mean)
     // 输出矩阵每列的最小值
-    println(matrixSummary.min)
+    println("min = " + matrixSummary.min)
     // 输出矩阵每列的最大值
-    println(matrixSummary.max)
+    println("max = " + matrixSummary.max)
     // 输出矩阵每列的方差
-    println(matrixSummary.variance)
+    println("variance = " + matrixSummary.variance)
     // 输出矩阵每列中非0项的数目
-    println(matrixSummary.numNonzeros)
+    println("numNonzeros = " + matrixSummary.numNonzeros)
 
     // 使用Spark的StandardScaler中的方法对每个特征进行标准化，使得每个特征是0均值和单位标准差。
     // withMean: 表示是否从数据中减去均值
@@ -170,11 +170,11 @@ object SparkLR {
     val iterResultsCrossValidation = Seq(1, 5, 10, 20, 30, 40, 50).map { param =>
       // 使用训练集训练逻辑回归模型
       val model = trainWithParams(scaledTrainData, 0.0, param, new SquaredL2Updater)
-      // 在测试集上计算模型相关的AUC
+      // 在测试集上计算模型相关的Accuracy
       createMetrics(s"$param iterations", scaledTestData, model)
     }
-    iterResultsCrossValidation.foreach { case (param, auc) =>
-      println(f"$param, AUC = ${auc * 100}%2.6f%%")
+    iterResultsCrossValidation.foreach { case (param, accuracy) =>
+      println(f"$param, Accuracy = ${accuracy * 100}%2.6f%%")
     }
 
     sc.stop()
