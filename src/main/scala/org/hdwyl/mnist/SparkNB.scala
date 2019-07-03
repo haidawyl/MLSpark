@@ -115,6 +115,8 @@ object SparkNB {
       println(f"$param, Accuracy = ${accuracy * 100}%2.2f%%")
     }
 
+    // Bernoulli naive Bayes requires 0 or 1 feature values
+    /*
     val nbResultsModelType = Seq("multinomial", "bernoulli").map { param =>
       val model = trainWithParams(trainData, 0.001, param)
       val scoreAndLabels = trainData.map { point =>
@@ -126,6 +128,7 @@ object SparkNB {
     nbResultsModelType.foreach { case (param, accuracy) =>
       println(f"$param, Accuracy = ${accuracy * 100}%2.2f%%")
     }
+    */
 
     // 交叉验证
     println("交叉验证")
