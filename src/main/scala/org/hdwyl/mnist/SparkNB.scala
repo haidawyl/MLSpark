@@ -81,7 +81,7 @@ object SparkNB {
       if (nbModel.predict(point.features) == point.label) 1 else 0
     }.sum
     val nbAccuracy = nbTotalCorrect / trainData.count
-    println(f"nbAccuracy = ${nbAccuracy}%f")
+    println(f"nbAccuracy = ${nbAccuracy * 100.0}%2.4f%%")
 
     // 评估模型
     val metrics = Seq(nbModel).map { model =>
