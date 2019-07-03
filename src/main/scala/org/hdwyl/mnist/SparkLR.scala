@@ -134,7 +134,7 @@ object SparkLR {
       if (lrModelScaled.predict(point.features) == point.label) 1 else 0
     }.sum
     val lrAccuracyScaled = lrTotalCorrectScaled / scaledTrainData.count
-    println(f"lrAccuracyScaled = ${lrAccuracyScaled}%f")
+    println(f"lrAccuracyScaled = ${lrAccuracyScaled * 100.0}%2.4f%%")
     val lrPredictionsVsTrue = scaledTrainData.map { point =>
       (lrModelScaled.predict(point.features), point.label)
     }
