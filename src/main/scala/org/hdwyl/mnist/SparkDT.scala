@@ -114,7 +114,7 @@ object SparkDT {
     // 使用Entropy不纯度进行最大深度调优
     println("train DecisionTree Model with Entropy")
     val dtResultsEntropy = Seq(1, 2, 3, 4, 5, 10, 20).map { param =>
-      val model = trainWithParams(trainData, param, Entropy)
+      val model = trainWithParams(trainData, param, maxBins, "entropy")
       val scoreAndLabels = trainData.map { point =>
         (model.predict(point.features), point.label)
       }
@@ -128,7 +128,7 @@ object SparkDT {
     // 使用Gini不纯度进行最大深度调优
     println("train DecisionTree Model with Gini")
     val dtResultsGini = Seq(1, 2, 3, 4, 5, 10, 20).map { param =>
-      val model = trainWithParams(trainData, param, Gini)
+      val model = trainWithParams(trainData, param, maxBins, "gini")
       val scoreAndLabels = trainData.map { point =>
         (model.predict(point.features), point.label)
       }
@@ -142,7 +142,7 @@ object SparkDT {
     // 交叉验证
     println("train DecisionTree Model with Entropy")
     val dtResultsEntropyCrossValidation = Seq(1, 2, 3, 4, 5, 10, 20).map { param =>
-      val model = trainWithParams(trainData, param, Entropy)
+      val model = trainWithParams(trainData, param, maxBins, "entropy")
       val scoreAndLabels = testData.map { point =>
         (model.predict(point.features), point.label)
       }
@@ -161,11 +161,15 @@ object SparkDT {
     *
     * @param input
     * @param maxDepth
+    * @param maxBins
     * @param impurity
     * @return
     */
-  def trainWithParams(input: RDD[LabeledPoint], maxDepth: Int, impurity: Impurity) = {
-    DecisionTree.train(input, Algo.Classification, impurity, maxDepth)
+  def trainWithParams(input: RDD[LabeledPoint], maxDepth: Int, maxBins: Int, impurity: String) = {
+    // DecisionTree.train(input, Algo.Classification, impurity, maxDepth)
+    // Empty categoricalFeaturesInfo indicates all features are continuous.
+    val categoricalFeaturesInfo = Map[Int, Int]()
+    DecisionTree.trainClassifier(input, 10, categoricalFeaturesInfo, impurity, maxDepth, maxBins)
   }
 
 }
