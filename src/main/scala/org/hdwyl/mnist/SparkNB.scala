@@ -115,6 +115,18 @@ object SparkNB {
       println(f"$param, Accuracy = ${accuracy * 100}%2.2f%%")
     }
 
+    val nbResultsModelType = Seq("multinomial", "bernoulli").map { param =>
+      val model = trainWithParams(trainData, 0.001, param)
+      val scoreAndLabels = trainData.map { point =>
+        (model.predict(point.features), point.label)
+      }
+      val metrics = new MulticlassMetrics(scoreAndLabels)
+      (s"$param model type", metrics.accuracy)
+    }
+    nbResultsModelType.foreach { case (param, accuracy) =>
+      println(f"$param, Accuracy = ${accuracy * 100}%2.2f%%")
+    }
+
     // 交叉验证
     println("交叉验证")
     val nbResultsCrossValidation = Seq(0.00001, 0.0001, 0.001, 0.01, 0.1, 1.0, 10.0).map { param =>
