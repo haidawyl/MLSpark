@@ -110,10 +110,12 @@ object SparkDT {
     // 决策树模型不需要进行数据标准化
 
     // 决策树模型有两种不纯度度量方式：Gini或者Entropy。
+    
+    val treeDepthRange = new Range(5, 51, 5)
 
     // 使用Entropy不纯度进行最大深度调优
     println("train DecisionTree Model with Entropy")
-    val dtResultsEntropy = Seq(1, 2, 3, 4, 5, 10, 20).map { param =>
+    val dtResultsEntropy = treeDepthRange.map { param =>
       val model = trainWithParams(trainData, param, maxBins, "entropy")
       val scoreAndLabels = trainData.map { point =>
         (model.predict(point.features), point.label)
@@ -127,7 +129,7 @@ object SparkDT {
 
     // 使用Gini不纯度进行最大深度调优
     println("train DecisionTree Model with Gini")
-    val dtResultsGini = Seq(1, 2, 3, 4, 5, 10, 20).map { param =>
+    val dtResultsGini = treeDepthRange.map { param =>
       val model = trainWithParams(trainData, param, maxBins, "gini")
       val scoreAndLabels = trainData.map { point =>
         (model.predict(point.features), point.label)
@@ -141,7 +143,7 @@ object SparkDT {
 
     // 交叉验证
     println("train DecisionTree Model with Entropy")
-    val dtResultsEntropyCrossValidation = Seq(1, 2, 3, 4, 5, 10, 20).map { param =>
+    val dtResultsEntropyCrossValidation = treeDepthRange.map { param =>
       val model = trainWithParams(trainData, param, maxBins, "entropy")
       val scoreAndLabels = testData.map { point =>
         (model.predict(point.features), point.label)
