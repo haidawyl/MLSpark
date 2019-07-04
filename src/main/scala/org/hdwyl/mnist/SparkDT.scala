@@ -111,7 +111,8 @@ object SparkDT {
 
     // 决策树模型有两种不纯度度量方式：Gini或者Entropy。
     
-    val treeDepthRange = new Range(5, 51, 5)
+    // DecisionTree currently only supports maxDepth <= 30
+    val treeDepthRange = new Range(5, 31, 5)
 
     // 使用Entropy不纯度进行最大深度调优
     println("train DecisionTree Model with Entropy")
