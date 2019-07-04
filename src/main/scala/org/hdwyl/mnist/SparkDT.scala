@@ -144,7 +144,7 @@ object SparkDT {
 
     // 交叉验证
     println("train DecisionTree Model with Entropy")
-    val dtResultsEntropyCrossValidation = treeDepthRange.map { param =>
+    val dtResultsDepthCV = treeDepthRange.map { param =>
       val model = trainWithParams(trainData, param, maxBins, "entropy")
       val scoreAndLabels = testData.map { point =>
         (model.predict(point.features), point.label)
@@ -152,9 +152,24 @@ object SparkDT {
       val metrics = new MulticlassMetrics(scoreAndLabels)
       (s"$param tree depth", metrics.accuracy)
     }
-    dtResultsEntropyCrossValidation.foreach { case (param, accuracy) =>
+    dtResultsDepthCV.foreach { case (param, accuracy) =>
       println(f"$param, Accuracy = ${accuracy * 100}%2.2f%%")
     }
+    
+    val treeBinsRange = new Range(16, 65, 4)
+    val dtResultsBinsCV = treeBinsRange.map { param =>
+      val model = trainWithParams(trainData, maxDepth, param, "entropy")
+      val scoreAndLabels = testData.map { point =>
+        (model.predict(point.features), point.label)
+      }
+      val metrics = new MulticlassMetrics(scoreAndLabels)
+      (s"$param tree bins", metrics.accuracy)
+    }
+    dtResultsBinsCV.foreach { case (param, accuracy) =>
+      println(f"$param, Accuracy = ${accuracy * 100}%2.2f%%")
+    }
+    
+
 
     sc.stop()
   }
