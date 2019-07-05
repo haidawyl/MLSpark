@@ -3,7 +3,7 @@
 
 import numpy as np
 from pyspark import SparkContext
-from pyspark.mllib.regression import LinearRegressionWithSGD
+from pyspark.mllib.regression import LabeledPoint, LinearRegressionWithSGD
 from pyspark.mllib.tree import DecisionTree
 
 
