@@ -40,9 +40,10 @@ object SparkLR {
     }
     trainData.cache()
     /*
-    trainData.take(K).map{ lp =>
+    trainData.take(K).map { lp =>
       Utils.printVector(lp.features, colNum)
       println("label = %d".format(lp.label.toInt))
+    }
     */
 
     // 测试数据集
@@ -64,9 +65,10 @@ object SparkLR {
     }
     testData.cache()
     /*
-    testData.take(K).map{ lp =>
+    testData.take(K).map { lp =>
       Utils.printVector(lp.features, colNum)
       println("label = %d".format(lp.label.toInt))
+    }
     */
 
     // 训练逻辑回归模型
