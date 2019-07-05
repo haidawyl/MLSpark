@@ -131,7 +131,7 @@ object SparkNB {
     */
 
     // 交叉验证
-    println("交叉验证")
+    println("交叉验证:")
     val nbResultsCrossValidation = Seq(0.00001, 0.0001, 0.001, 0.01, 0.1, 1.0, 10.0).map { param =>
       val model = trainWithParams(trainData, param, modelType)
       val scoreAndLabels = testData.map { point =>
