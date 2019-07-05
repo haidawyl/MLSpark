@@ -286,24 +286,24 @@ def run_hdfs():
     rec = recommend(my_mat, 789, N=10)
     print "通过计算余弦相似度获得的推荐电影："
     for index, r in enumerate(rec):
-        print (index + 1), ".", movie_titles(r[0]), r[1]
+        print (index + 1), ".", movie_titles[r[0]], r[1]
     rec = recommend(my_mat, 789, N=10, sim_meas=euclid_sim)
     print "通过使用欧式距离计算相似度获得的推荐电影："
     for index, r in enumerate(rec):
-        print (index + 1), ".", movie_titles(r[0]), r[1]
+        print (index + 1), ".", movie_titles[r[0]], r[1]
     rec = recommend(my_mat, 789, N=10, sim_meas=pears_sim)
     print "通过使用皮尔逊相关系数计算相似度获得的推荐电影："
     for index, r in enumerate(rec):
-        print (index + 1), ".", movie_titles(r[0]), r[1]
+        print (index + 1), ".", movie_titles[r[0]], r[1]
 
     rec = recommend(my_mat, 789, est_method=svd_est)
     print "通过SVD评分估计方法及计算余弦相似度获得的推荐电影："
     for index, r in enumerate(rec):
-        print (index + 1), ".", movie_titles(r[0]), r[1]
+        print (index + 1), ".", movie_titles[r[0]], r[1]
     rec = recommend(my_mat, 789, est_method=svd_est, sim_meas=pears_sim)
     print "通过SVD评分估计方法及使用皮尔逊相关系数计算相似度获得的推荐电影："
     for index, r in enumerate(rec):
-        print (index + 1), ".", movie_titles(r[0]), r[1]
+        print (index + 1), ".", movie_titles[r[0]], r[1]
 
 
 if __name__ == '__main__':
