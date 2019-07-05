@@ -57,8 +57,8 @@ object SparkDT {
     testData.cache()
 
     // 最大树深度，用于决策树模型
-    val maxDepth = 5
-    val maxBins = 32
+    val maxDepth = 30
+    val maxBins = 20
     // 
     val numClasses = 10
     
