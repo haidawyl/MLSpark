@@ -169,8 +169,6 @@ object SparkDT {
       println(f"$param, Accuracy = ${accuracy * 100}%2.2f%%")
     }
     
-
-
     sc.stop()
   }
 
