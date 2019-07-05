@@ -1,9 +1,0 @@
-SparkALS.scala
-
-factor -> factors
-
-SparkClassification.scala
-
-line377 NavieBayesModel -> NaiveBayesModel
-line381 nbMetricsCats -> nbModelCats
-line404 dtMetricsCats -> dtModelCats
