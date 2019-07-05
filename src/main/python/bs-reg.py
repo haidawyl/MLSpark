@@ -267,3 +267,10 @@ if __name__ == "__main__":
     metrics = [evaluate(train_data, test_data, 10, 0.1, param, 'l1', False) for param in params]
     print(params)
     print(metrics)
+    
+    model_l1 = LinearRegressionWithSGD.train(train_data, 10, 0.1, regParam=1.0, regType='l1', intercept=False)
+    model_l1_10 = LinearRegressionWithSGD.train(train_data, 10, 0.1, regParam=10.0, regType='l1', intercept=False)
+    model_l1_100 = LinearRegressionWithSGD.train(train_data, 10, 0.1, regParam=100.0, regType='l1', intercept=False)
+    print("L1 (1.0) number of zero weights: " + str(sum(model_l1.weights.array == 0)))
+    print("L1 (10.0) number of zero weights: " + str(sum(model_l1_10.weights.array == 0)))
+    print("L1 (100.0) number of zero weights: " + str(sum(model_l1_100.weights.array == 0)))
