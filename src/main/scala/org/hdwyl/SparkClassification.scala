@@ -374,11 +374,11 @@ object SparkClassification {
     val nbMetricsCats = new BinaryClassificationMetrics(nbPredictionsVsTrueCats)
     val nbPrCats = nbMetricsCats.areaUnderPR
     val nbRocCats = nbMetricsCats.areaUnderROC
-    // NavieBayesModel
+    // NaiveBayesModel
     // Accuracy: 58.3232%
     // Area under PR: 68.3386%
     // Area under ROC: 58.6397%
-    println(f"${nbMetricsCats.getClass.getSimpleName}\n" +
+    println(f"${nbModelCats.getClass.getSimpleName}\n" +
       f"Accuracy: ${nbAccuracyCats * 100}%2.4f%%\n" +
       f"Area under PR: ${nbPrCats * 100.0}%2.4f%%\n" +
       f"Area under ROC: ${nbRocCats * 100.0}%2.4f%%")
@@ -401,7 +401,7 @@ object SparkClassification {
     // Accuracy: 66.5585%
     // Area under PR: 75.8784%
     // Area under ROC: 66.5005%
-    println(f"${dtMetricsCats.getClass.getSimpleName}\n" +
+    println(f"${dtModelCats.getClass.getSimpleName}\n" +
       f"Accuracy: ${dtAccuracyCats * 100}%2.4f%%\n" +
       f"Area under PR: ${dtPrCats * 100.0}%2.4f%%\n" +
       f"Area under ROC: ${dtRocCats * 100.0}%2.4f%%")
