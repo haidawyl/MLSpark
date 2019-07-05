@@ -18,12 +18,14 @@ object SparkLR {
   def main(args: Array[String]) {
     val conf = new SparkConf()
     val sc = new SparkContext(conf)
+    val K = 10
 
     // 训练数据集
     val trainFeatureFile = "hdfs://PATH/mnist/train-images.idx3-ubyte"
     val trainLabelFile = "hdfs://PATH/mnist/train-labels.idx1-ubyte"
 
     val trainImagesAsMatrices = MnistHdfsReader.loadFeature(sc, trainFeatureFile)
+    val colNum = MnistHdfsReader.colNum
     val trainLabelsAsInts = MnistHdfsReader.loadLabels(sc, trainLabelFile)
 
     /*
@@ -37,6 +39,11 @@ object SparkLR {
       LabeledPoint(label, Vectors.dense(image.toArray))
     }
     trainData.cache()
+    /*
+    trainData.take(K).map{ lp =>
+      Utils.printVector(lp.features, colNum)
+      println("label = %d".format(lp.label.toInt))
+    */
 
     // 测试数据集
     val testFeatureFile = "hdfs://PATH/mnist/t10k-images.idx3-ubyte"
@@ -56,6 +63,11 @@ object SparkLR {
       LabeledPoint(label, Vectors.dense(image.toArray))
     }
     testData.cache()
+    /*
+    testData.take(K).map{ lp =>
+      Utils.printVector(lp.features, colNum)
+      println("label = %d".format(lp.label.toInt))
+    */
 
     // 训练逻辑回归模型
     val lrModel = new LogisticRegressionWithLBFGS().setNumClasses(10).run(trainData)
@@ -68,7 +80,6 @@ object SparkLR {
     val trueLabel = dataPoint.label
     println("trueLabel = %f".format(trueLabel))
 
-    val K = 10
     // 使用模型对整体数据进行预测
     val predictions = lrModel.predict(trainData.map(lp => lp.features))
     println("predictions:")
