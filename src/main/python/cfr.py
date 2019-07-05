@@ -307,9 +307,9 @@ def run_hdfs():
 
 
 if __name__ == '__main__':
-    run_local()
+    # run_local()
 
-    # from pyspark import SparkContext
-    # sc = SparkContext()
-    # run_hdfs()
-    # sc.stop()
+    from pyspark import SparkContext
+    sc = SparkContext()
+    run_hdfs()
+    sc.stop()
