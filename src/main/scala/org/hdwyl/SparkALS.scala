@@ -38,17 +38,17 @@ object SparkALS {
     // ALS模型便已能收敛为一个比较合理的好模型。这样，大部分情况下都没必要迭代太多次（10次左右一般就挺好）。
     // lambda：该参数控制模型的正则化过程，从而控制模型的过拟合情况。其值越高，正则化越严厉。
     // 该参数的赋值与实际数据的大小、特征和稀疏程度有关。和其它的机器学习模型一样，正则参数应该通过用非样本的测试数据进行交叉验证来调整。
-    // 方法返回一个MatrixFactorizationModel对象, 该对象将用户因子和物品因子分别保存在一个(id,factor)对类型的RDD中，
+    // 方法返回一个MatrixFactorizationModel对象, 该对象将用户因子和物品因子分别保存在一个(id, factors)对类型的RDD中，
     // 它们分别称作userFeatures和productFeatures。
     val model1 = ALS.train(ratings1, 50, 10, 0.01)
     // User's factor: 943
     // Data Structure of the model1.userFeatures: RDD[(Int, Array[Double])]
     println("User's factor: %d".format(model1.userFeatures.count()))
-    model1.userFeatures.map { case (id, factor) => (id, factor.mkString(", ")) }.take(K).foreach(println)
+    model1.userFeatures.map { case (id, factors) => (id, factors.mkString(", ")) }.take(K).foreach(println)
     // Movie's factor: 1682
     // Data Structure of the model1.productFeatures: RDD[(Int, Array[Double])]
     println("Movie's factor: %d".format(model1.productFeatures.count()))
-    model1.productFeatures.map { case (id, factor) => (id, factor.mkString(", ")) }.take(K).foreach(println)
+    model1.productFeatures.map { case (id, factors) => (id, factors.mkString(", ")) }.take(K).foreach(println)
 
     // 隐式数据集
     val rawRatings2 = rawData.map(_.split("\t").take(3)).map(e => (e(0), e(1), if (e(2).toInt < 3) 0 else 1))
@@ -60,7 +60,7 @@ object SparkALS {
     val alphas = List(5.0, 4.0, 3.0, 2.0, 1.0)
     for (alpha <- alphas) {
       // alpha参数指定了信心权重所应达到的基准线。该值越高则所训练出的模型越认为用户与他没评级过的电影之间没有相关性。
-      // 方法返回一个MatrixFactorizationModel对象, 该对象将用户因子和物品因子分别保存在一个(id,factor)对类型的RDD中，
+      // 方法返回一个MatrixFactorizationModel对象, 该对象将用户因子和物品因子分别保存在一个(id, factors)对类型的RDD中，
       // 它们分别称作userFeatures和productFeatures。
       val model2 = ALS.trainImplicit(ratings2, 50, 10, 0.01, alpha)
       // User's factor: 943
@@ -138,9 +138,9 @@ object SparkALS {
     println(cosineSimilarity(itemVector, itemVector))
 
     // 计算物品567与其它物品的余弦相似度
-    val itemSims = model1.productFeatures.map { case (id, factor) =>
-      // Data Structure of the factor: Array[Double]
-      val factorVector = new DoubleMatrix(factor)
+    val itemSims = model1.productFeatures.map { case (id, factors) =>
+      // Data Structure of the factors: Array[Double]
+      val factorVector = new DoubleMatrix(factors)
       val sim = cosineSimilarity(factorVector, itemVector)
       (id, sim)
     }
@@ -162,9 +162,9 @@ object SparkALS {
     println(cosineSimilarity(userVector, userVector))
 
     // 计算用户789与其他用户的余弦相似度
-    val userSims = model1.userFeatures.map { case (id, factor) =>
-      // Data Structure of the factor: Array[Double]
-      val factorVector = new DoubleMatrix(factor)
+    val userSims = model1.userFeatures.map { case (id, factors) =>
+      // Data Structure of the factors: Array[Double]
+      val factorVector = new DoubleMatrix(factors)
       val sim = cosineSimilarity(factorVector, userVector)
       (id, sim)
     }
@@ -238,7 +238,7 @@ object SparkALS {
     // 全局MAPK的求解要计算对每一个用户的APK得分，再求其平均。这就要为每一个用户都生成相应的推荐列表。
 
     // 使用电影因子向量构建一个DoubleMatrix对象
-    val itemFactors = model1.productFeatures.map { case (id, factor) => factor }.collect()
+    val itemFactors = model1.productFeatures.map { case (id, factors) => factors }.collect()
     // Data Structure of the itemFactors: Array[Double]
     val itemMatrix = new DoubleMatrix(itemFactors)
     // itemMatrix: 1682 rows, 50 columns
@@ -248,9 +248,9 @@ object SparkALS {
     val imBroadcast = sc.broadcast(itemMatrix)
 
     // 计算每一个用户的推荐
-    val allRecs = model1.userFeatures.map { case (userId, factor) =>
+    val allRecs = model1.userFeatures.map { case (userId, factors) =>
       // 使用用户因子向量构建一个DoubleMatrix对象
-      val userVector = new DoubleMatrix(factor)
+      val userVector = new DoubleMatrix(factors)
       // 对用户因子矩阵和电影因子矩阵做乘积，其结果为一个表示各个电影预计评级的向量（长度为1682，即电影的总数目）
       val scores = imBroadcast.value.mmul(userVector)
       // 针对评分添加索引并根据评分排序
