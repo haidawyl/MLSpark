@@ -34,7 +34,7 @@ def load_hdfs_rating():
     # 电影数量
     num_movies = rating_fields.map(lambda fields: int(fields[1])).distinct().count()
     my_mat = np.mat(np.zeros((num_users, num_movies)))
-    for fields in rating_fields:
+    for fields in rating_fields.collect():
         my_mat[int(fields[0]) - 1, int(fields[1]) - 1] = float(fields[2])
 
     return my_mat
@@ -45,7 +45,7 @@ def load_hdfs_movie_titles():
     # 读取数据集
     movie_data = sc.textFile("hdfs://PATH/ml-100k/u.item")
     movie_fields = movie_data.map(lambda line: line.split("|"))
-    titles = movie_fields.map(lambda fields: (int(fields[0], fields[0]))).collectAsMap()
+    titles = movie_fields.map(lambda fields: (int(fields[0]), fields[1])).collectAsMap()
     return titles
 
 
