@@ -127,7 +127,7 @@ if __name__ == "__main__":
 
     data = records.map(lambda r: LabeledPoint(extract_label(r), extract_features(r)))
     first_point = data.first()
-    print("Raw data:" + str(records.first()[2:-1]))
+    print("Raw data:" + str(records.first()[2:-3]))
     print("Label:" + str(first_point.label))
     print("Linear Model feature vector:\n" + str(first_point.features))
     print("Linear Model feature vector length: " + str(len(first_point.features)))
