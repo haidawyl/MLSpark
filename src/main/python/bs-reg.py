@@ -8,42 +8,75 @@ from pyspark.mllib.tree import DecisionTree
 
 
 def get_mapping(rdd, idx):
+    '''
+    将类型特征表示成二维形式，同时将特征值映射到二元向量中非0的位置
+    :param rdd:
+    :param idx:
+    :return:
+    '''
+    # 将第idx列的特征值去重，然后对每个值使用zipWithIndex函数映射到一个唯一的索引，
+    # 组成一个RDD的键-值映射，键是变量，值是索引。该索引便是特征在二元向量中对应的非0位置。
     return rdd.map(lambda fields: fields[idx]).distinct().zipWithIndex().collectAsMap()
 
 
 def extract_features(record):
+    '''
+    提取特征
+    :param record:
+    :return:
+    '''
+    # 创建长度为cat_len的全0向量
     cat_vec = np.zeros(cat_len)
     i = 0
+    # 各个特征的二元编码的累计长度，确保非0特征在整个特征向量中位于正确的位置
     step = 0
-    # mappings: [{}, {}, {}]
+    # mappings: 字典数组
+    # 类型特征
     for field in record[2:10]:
-        # m: {}
+        # 字典类型，特征值在二元编码中的映射，即{特征值: 索引}
         m = mappings[i]
+        # 特征值在二元编码中的索引
         idx = m[field]
         cat_vec[idx + step] = 1
         i = i + 1
         step = step + len(m)
+    # 数值特征
     num_vec = np.array([float(field) for field in record[10:14]])
     return np.concatenate((cat_vec, num_vec))
 
 
 def extract_features2(record):
+    '''
+    提取特征，将各个特征的二元编码拼接在一起
+    :param record:
+    :return:
+    '''
+    # 创建空数组
     cat_vec = np.array([])
     i = 0
-    # mappings: [{}, {}, {}]
+    # mappings: 字典数组
+    # 类型特征
     for field in record[2:10]:
-        # m: {}
+        # 字典类型，特征值在二元编码中的映射，即{特征值: 索引}
         m = mappings[i]
-        field_vec = np.zeros(len(m))
+        # 特征值在二元编码中的索引
         idx = m[field]
+        # 创建数组，大小为特征的二元编码长度
+        field_vec = np.zeros(len(m))
         field_vec[idx] = 1
         cat_vec = np.concatenate((cat_vec, field_vec))
         i = i + 1
+    # 数值特征
     num_vec = np.array([float(field) for field in record[10:14]])
     return np.concatenate((cat_vec, num_vec))
 
 
 def extract_label(record):
+    '''
+    提取标签
+    :param record:
+    :return:
+    '''
     return float(record[-1])
 
 
@@ -80,6 +113,11 @@ def squared_log_error(actual, predicted):
 
 
 def extract_features_dt(record):
+    '''
+    提取特征，用于决策树模型
+    :param record:
+    :return:
+    '''
     return np.array(map(float, record[2:14]))
 
 
@@ -117,13 +155,18 @@ def evaluate_dt(train, test, maxDepth, maxBins):
 
 
 if __name__ == "__main__":
+    # 线性回归在应用L2正则化时通常称为岭回归（ridge regression），
+    # 应用L1正则化时称为LASSO（Least Absolute Shrinkage and Selection Operator）。
+    # 决策树在用于回归时使用的不纯度度量方法是方差。
     sc = SparkContext()
     # 读取数据集
     raw_data = sc.textFile("hdfs://PATH/BikeSharing/hour_noheader.csv")
     num_data = raw_data.count()
+    # num_data = 17379
     print("num_data = %d" % num_data)
     records = raw_data.map(lambda x: x.split(","))
-    print(records.first())
+    first = records.first()
+    print(first)
 
     # 缓存数据
     records.cache()
@@ -133,21 +176,27 @@ if __name__ == "__main__":
     # mappings: [{}, {}, {}]
     mappings = [get_mapping(records, i) for i in range(2, 10)]
     cat_len = sum(map(len, mappings))
-    num_len = len(records.first()[11:15])
+    num_len = len(first[11:15])
     total_len = num_len + cat_len
 
+    # Feature vector length for categorical features: 57
     print("Feature vector length for categorical features: %d" % cat_len)
+    # Feature vector length for numerical features: 4
     print("Feature vector length for numerical features: %d" % num_len)
+    # Total feature vector length: 61
     print("Total feature vector length: %d" % total_len)
 
+    # 提取每条数据记录的特征向量和标签
     data = records.map(lambda r: LabeledPoint(extract_label(r), extract_features(r)))
+    data.cache()
     first_point = data.first()
-    print("Raw data:" + str(records.first()[2:-3]))
+    print("Raw data:" + str(first[2:-3]))
     print("Label:" + str(first_point.label))
     print("Linear Model feature vector:\n" + str(first_point.features))
     print("Linear Model feature vector length: " + str(len(first_point.features)))
 
     data_dt = records.map(lambda r: LabeledPoint(extract_label(r), extract_features_dt(r)))
+    data_dt.cache()
     first_point_dt = data_dt.first()
     print("Decision Tree feature vector:\n" + str(first_point_dt.features))
     print("Decision Tree feature vector length: " + str(len(first_point_dt.features)))
