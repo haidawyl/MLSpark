@@ -100,6 +100,21 @@ def evaluate(train, test, iterations, step, regParam, regType, intercept):
     rmsle = np.sqrt(tp.map(lambda (t, p): squared_log_error(t, p)).mean())
     return rmsle
 
+def evaluate_dt(train, test, maxDepth, maxBins):
+    '''
+    :param train:
+    :param test:
+    :param maxDepth:
+    :param maxBins:
+    :return:
+    '''
+    model = DecisionTree.trainRegressor(train, {}, impurity='variance', maxDepth=maxDepth, maxBins=maxBins)
+    predicted = model.predict(test.map(lambda p: p.features))
+    actual = test.map(lambda p: p.label)
+    tp = actual.zip(predicted)
+    rmsle = np.sqrt(tp.map(lambda (t, p): squared_log_error(t, p)).mean())
+    return rmsle
+
 
 if __name__ == "__main__":
     sc = SparkContext()
@@ -267,10 +282,32 @@ if __name__ == "__main__":
     metrics = [evaluate(train_data, test_data, 10, 0.1, param, 'l1', False) for param in params]
     print(params)
     print(metrics)
-    
+
+    # 使用L1正则化可以得到稀疏的权重向量。
     model_l1 = LinearRegressionWithSGD.train(train_data, 10, 0.1, regParam=1.0, regType='l1', intercept=False)
     model_l1_10 = LinearRegressionWithSGD.train(train_data, 10, 0.1, regParam=10.0, regType='l1', intercept=False)
     model_l1_100 = LinearRegressionWithSGD.train(train_data, 10, 0.1, regParam=100.0, regType='l1', intercept=False)
     print("L1 (1.0) number of zero weights: " + str(sum(model_l1.weights.array == 0)))
     print("L1 (10.0) number of zero weights: " + str(sum(model_l1_10.weights.array == 0)))
     print("L1 (100.0) number of zero weights: " + str(sum(model_l1_100.weights.array == 0)))
+
+    # 截距
+    # 截距是添加到权重向量的常数项，可以有效地影响目标变量的中值。
+    # 如果数据已经被归一化，截距则没有必要。但是理论上截距的使用并不会带来坏处。
+    params = [False, True]
+    metrics = [evaluate(train_data, test_data, 10, 0.1, 1.0, 'l2', param) for param in params]
+    print(params)
+    print(metrics)
+
+    # 决策树提供了两个主要的参数：最大树深度和最大划分数。
+    # 最大树深度
+    params = [1, 2, 3, 4, 5, 10, 20]
+    metrics = [evaluate_dt(train_data_dt, test_data_dt, param, 32) for param in params]
+    print(params)
+    print(metrics)
+
+    # 最大划分数
+    params = [2, 4, 8, 16, 32, 64, 100]
+    metrics = [evaluate_dt(train_data_dt, test_data_dt, 5, param) for param in params]
+    print(params)
+    print(metrics)
