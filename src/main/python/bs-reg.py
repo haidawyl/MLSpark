@@ -82,7 +82,7 @@ def extract_label(record):
 
 def squared_error(actual, predicted):
     '''
-    计算平方误差，即所有样本预测值和实际值平方差之和
+    计算平方误差，即预测值和实际值的差的平方
     :param actual: 实际值
     :param predicted: 预测值
     :return: 平方误差
@@ -92,7 +92,7 @@ def squared_error(actual, predicted):
 
 def abs_error(actual, predicted):
     '''
-    计算平均绝对误差，即所有样本预测值和实际值的差的绝对值的平均值
+    计算绝对误差，即预测值和实际值的差的绝对值
     :param actual: 实际值
     :param predicted: 预测值
     :return: 平均绝对误差
@@ -102,7 +102,7 @@ def abs_error(actual, predicted):
 
 def squared_log_error(actual, predicted):
     '''
-    计算均方根对数误差，即所有样本预测值和目标值进行对数变换后的RMSE（均方根误差）
+    计算均方对数误差，即样本预测值和实际值进行对数变换后的MSE（均方误差）
     这个度量方法适用于目标变量值域很大，并且没有必要对预测值和目标值的误差进行惩罚的情况。
     另外，它也适用于计算误差的百分率而不是误差的绝对值。
     :param actual: 实际值
@@ -137,6 +137,7 @@ def evaluate(train, test, iterations, step, regParam, regType, intercept):
     tp = test.map(lambda p: (p.label, model.predict(p.features)))
     rmsle = np.sqrt(tp.map(lambda (t, p): squared_log_error(t, p)).mean())
     return rmsle
+
 
 def evaluate_dt(train, test, maxDepth, maxBins):
     '''
@@ -245,14 +246,13 @@ if __name__ == "__main__":
     data_log = data.map(lambda lp: LabeledPoint(np.log(lp.label), lp.features))
     model_log = LinearRegressionWithSGD.train(data_log, iterations=10, step=0.1)
     true_vs_predicted_log = data_log.map(lambda p: (np.exp(p.label), np.exp(model_log.predict(p.features))))
-
     mse_log = true_vs_predicted_log.map(lambda (t, p): squared_error(t, p)).mean()
     mae_log = true_vs_predicted_log.map(lambda (t, p): abs_error(t, p)).mean()
     rmsle_log = np.sqrt(true_vs_predicted_log.map(lambda (t, p): squared_log_error(t, p)).mean())
+    print("对目标变量进行对数变换后训练线性回归模型计算得到的MSE、MAE和RMSLE")
     print("Mean Squared Error: %2.4f" % mse_log)
     print("Mean Absolute Error: %2.4f" % mae_log)
     print("Root Mean Squared Log Error: %2.4f" % rmsle_log)
-
     print("Non log-transformed predictions:\n" + str(true_vs_predicted.take(3)))
     print("Log-transformed predictions:\n" + str(true_vs_predicted_log.take(3)))
 
@@ -262,20 +262,50 @@ if __name__ == "__main__":
     predicted_log = dt_model_log.predict(data_dt_log.map(lambda p: p.features))
     actual_log = data_dt_log.map(lambda p: p.label)
     true_vs_predicted_dt_log = actual_log.zip(predicted_log).map(lambda (t, p): (np.exp(t), np.exp(p)))
-
     mse_log_dt = true_vs_predicted_dt_log.map(lambda (t, p): squared_error(t, p)).mean()
     mae_log_dt = true_vs_predicted_dt_log.map(lambda (t, p): abs_error(t, p)).mean()
     rmsle_log_dt = np.sqrt(true_vs_predicted_dt_log.map(lambda (t, p): squared_log_error(t, p)).mean())
+    print("对目标变量进行对数变换后训练决策树模型计算得到的MSE、MAE和RMSLE")
     print("Mean Squared Error: %2.4f" % mse_log_dt)
     print("Mean Absolute Error: %2.4f" % mae_log_dt)
     print("Root Mean Squared Log Error: %2.4f" % rmsle_log_dt)
-
     print("Non log-transformed predictions:\n" + str(true_vs_predicted_dt.take(3)))
     print("Log-transformed predictions:\n" + str(true_vs_predicted_dt_log.take(3)))
+
+    # 对目标变量进行取平方根变换
+    data_sqrt = data.map(lambda lp: LabeledPoint(np.sqrt(lp.label), lp.features))
+    model_sqrt = LinearRegressionWithSGD.train(data_sqrt, iterations=10, step=0.1)
+    true_vs_predicted_sqrt = data_sqrt.map(lambda p: (p.label ** 2, model_sqrt.predict(p.features) ** 2))
+    mse_sqrt = true_vs_predicted_sqrt.map(lambda (t, p): squared_error(t, p)).mean()
+    mae_sqrt = true_vs_predicted_sqrt.map(lambda (t, p): abs_error(t, p)).mean()
+    rmsle_sqrt = np.sqrt(true_vs_predicted_sqrt.map(lambda (t, p): squared_log_error(t, p)).mean())
+    print("对目标变量进行取平方根变换后训练线性回归模型计算得到的MSE、MAE和RMSLE")
+    print("Mean Squared Error: %2.4f" % mse_sqrt)
+    print("Mean Absolute Error: %2.4f" % mae_sqrt)
+    print("Root Mean Squared Log Error: %2.4f" % rmsle_sqrt)
+    print("Non log-transformed predictions:\n" + str(true_vs_predicted.take(3)))
+    print("Log-transformed predictions:\n" + str(true_vs_predicted_sqrt.take(3)))
+
+    data_dt_sqrt = data_dt.map(lambda lp: LabeledPoint(np.sqrt(lp.label), lp.features))
+    categorical_features_info = {}
+    dt_model_sqrt = DecisionTree.trainRegressor(data_dt_sqrt, categorical_features_info)
+    predicted_sqrt = dt_model_sqrt.predict(data_dt_sqrt.map(lambda p: p.features))
+    actual_sqrt = data_dt_sqrt.map(lambda p: p.label)
+    true_vs_predicted_dt_sqrt = actual_sqrt.zip(predicted_sqrt).map(lambda (t, p): (t ** 2, p ** 2))
+    mse_sqrt_dt = true_vs_predicted_dt_sqrt.map(lambda (t, p): squared_error(t, p)).mean()
+    mae_sqrt_dt = true_vs_predicted_dt_sqrt.map(lambda (t, p): abs_error(t, p)).mean()
+    rmsle_sqrt_dt = np.sqrt(true_vs_predicted_dt_sqrt.map(lambda (t, p): squared_log_error(t, p)).mean())
+    print("对目标变量进行取平方根变换后训练决策树模型计算得到的MSE、MAE和RMSLE")
+    print("Mean Squared Error: %2.4f" % mse_sqrt_dt)
+    print("Mean Absolute Error: %2.4f" % mae_sqrt_dt)
+    print("Root Mean Squared Log Error: %2.4f" % rmsle_sqrt_dt)
+    print("Non log-transformed predictions:\n" + str(true_vs_predicted_dt.take(3)))
+    print("Log-transformed predictions:\n" + str(true_vs_predicted_dt_sqrt.take(3)))
 
     # 线性模型在经过对数处理后的数据得到较好的性能是意料之中的。因为本质上我们的目的是最小化均方差，
     # 一旦把目标值转换为对数值，便可以有效最小化损失函数，即最小化RMSLE。
 
+    # 创建训练集和测试集
     data_with_idx = data.zipWithIndex().map(lambda (k, v): (v, k))
     # 随机采样提取测试集
     test = data_with_idx.sample(False, 0.2, 42)
@@ -301,6 +331,8 @@ if __name__ == "__main__":
     test_data_dt = test_dt.map(lambda (idx, p): p)
 
     # 迭代
+    # 通常在使用SGD训练模型的过程中，随着迭代次数增加可以实现更好的性能，
+    # 但是性能在迭代次数达到一定数目时会增长得越来越慢。
     params = [1, 5, 10, 20, 50, 100]
     metrics = [evaluate(train_data, test_data, param, 0.01, 0.0, 'l2', False) for param in params]
     print(params)
@@ -317,7 +349,9 @@ if __name__ == "__main__":
     print(params)
     print(metrics)
 
-    # L2正则化
+    # L2正则化参数
+    # 正则化是添加一个关于模型权重向量的函数作为损失项，来惩罚模型的复杂度。
+    # 其中L2正则化是对权重向量进行L2-norm惩罚，而L1正则化是对权重向量进行L1-norm惩罚。
     # 随着正则化的提高，训练集的预测性能会下降，因为模型不能很好拟合数据。
     # 但是，设置合适的正则化参数，能够在测试集上达到最好的性能，最终得到一个泛化能力最优的模型。
     params = [0.0, 0.01, 0.1, 1.0, 5.0, 10.0, 20.0]
@@ -325,8 +359,7 @@ if __name__ == "__main__":
     print(params)
     print(metrics)
 
-    # L1正则化
-    # 使用L1正则化可以得到稀疏的权重向量。
+    # L1正则化参数
     params = [0.0, 0.01, 0.1, 1.0, 10.0, 100.0, 1000.0]
     metrics = [evaluate(train_data, test_data, 10, 0.1, param, 'l1', False) for param in params]
     print(params)
@@ -336,6 +369,7 @@ if __name__ == "__main__":
     model_l1 = LinearRegressionWithSGD.train(train_data, 10, 0.1, regParam=1.0, regType='l1', intercept=False)
     model_l1_10 = LinearRegressionWithSGD.train(train_data, 10, 0.1, regParam=10.0, regType='l1', intercept=False)
     model_l1_100 = LinearRegressionWithSGD.train(train_data, 10, 0.1, regParam=100.0, regType='l1', intercept=False)
+    # 随着L1的正则化参数越来越大，模型的权重向量中0的数目也越来越大。
     print("L1 (1.0) number of zero weights: " + str(sum(model_l1.weights.array == 0)))
     print("L1 (10.0) number of zero weights: " + str(sum(model_l1_10.weights.array == 0)))
     print("L1 (100.0) number of zero weights: " + str(sum(model_l1_100.weights.array == 0)))
