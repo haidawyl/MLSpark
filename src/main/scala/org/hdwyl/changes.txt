@@ -20,3 +20,8 @@ line181 split to 2 lines
 line285-286 print -> println
 line318 -> i <- 0 until 8
 line322 -> record(i + 2)
+
+bs-reg.py
+
+line286-287 log -> sqrt
+line302-303 log -> sqrt
