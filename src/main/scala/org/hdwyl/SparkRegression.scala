@@ -71,7 +71,8 @@ object SparkRegression {
     lr.setIntercept(false)
     val lrModel = lr.run(data)
     val trueVsPredicted = data.map(p => (p.label, lrModel.predict(p.features)))
-    println("Linear Model predictions: %s".format(trueVsPredicted.take(5).toString))
+    println("Linear Model predictions:")
+    trueVsPredicted.take(5).foreach(println)
 
     // categoricalFeaturesInfo为一个字典参数，这个字典参数将类型特征的索引映射到特征中类型的数目。
     // 如果某个特征值不在这个字典中，则将其映射设置为空。
@@ -83,7 +84,8 @@ object SparkRegression {
     val predictions = dtModel.predict(dataDt.map(p => p.features))
     val actual = dataDt.map(p => p.label)
     val trueVsPredictedDt = actual.zip(predictions)
-    println("Decision Tree predictions: %s".format(trueVsPredictedDt.take(5).toString))
+    println("Decision Tree predictions:")
+    trueVsPredictedDt.take(5).foreach(println)
     println("Decision Tree depth: %d".format(dtModel.depth))
     println("Decision Tree number of nodes: %d".format(dtModel.numNodes))
 
@@ -96,33 +98,35 @@ object SparkRegression {
     val mse = trueVsPredicted.map { case (t, p) => squaredError(t, p) }.mean()
     val mae = trueVsPredicted.map { case (t, p) => absError(t, p) }.mean()
     val rmsle = math.sqrt(trueVsPredicted.map { case (t, p) => squaredLogError(t, p) }.mean())
-    println(s"Linear Model - Mean Squared Error: ${mse}%2.4f")
-    println(s"Linear Model - Mean Absolute Error: ${mae}%2.4f")
-    println(s"Linear Model - Root Mean Squared Log Error: ${rmsle}%2.4f")
+    println(f"Linear Model - Mean Squared Error: ${mse}%2.4f")
+    println(f"Linear Model - Mean Absolute Error: ${mae}%2.4f")
+    println(f"Linear Model - Root Mean Squared Log Error: ${rmsle}%2.4f")
 
     val mseDt = trueVsPredictedDt.map { case (t, p) => squaredError(t, p) }.mean()
     val maeDt = trueVsPredictedDt.map { case (t, p) => absError(t, p) }.mean()
     val rmsleDt = math.sqrt(trueVsPredictedDt.map { case (t, p) => squaredLogError(t, p) }.mean())
-    println(s"Decision Tree - Mean Squared Error: ${mseDt}%2.4f")
-    println(s"Decision Tree - Mean Absolute Error: ${maeDt}%2.4f")
-    println(s"Decision Tree - Root Mean Squared Log Error: ${rmsleDt}%2.4f")
+    println(f"Decision Tree - Mean Squared Error: ${mseDt}%2.4f")
+    println(f"Decision Tree - Mean Absolute Error: ${maeDt}%2.4f")
+    println(f"Decision Tree - Root Mean Squared Log Error: ${rmsleDt}%2.4f")
 
     // 对目标变量进行对数变换
     val dataLog = data.map(lp => LabeledPoint(math.log(lp.label), lp.features))
     val lrLog = new LinearRegressionWithSGD()
     lrLog.optimizer.setNumIterations(10).setStepSize(0.1)
     lrLog.setIntercept(false)
-    val lrModelLog = lrLog.run(data)
+    val lrModelLog = lrLog.run(dataLog)
     val trueVsPredictedLog = dataLog.map(p => (math.exp(p.label), math.exp(lrModelLog.predict(p.features))))
     val mseLog = trueVsPredictedLog.map { case (t, p) => squaredError(t, p) }.mean()
     val maeLog = trueVsPredictedLog.map { case (t, p) => absError(t, p) }.mean()
     val rmsleLog = math.sqrt(trueVsPredictedLog.map { case (t, p) => squaredLogError(t, p) }.mean())
     println("对目标变量进行对数变换后训练线性回归模型计算得到的MSE、MAE和RMSLE")
-    println(s"Mean Squared Error: ${mseLog}%2.4f")
-    println(s"Mean Absolute Error: ${maeLog}%2.4f")
-    println(s"Root Mean Squared Log Error: ${rmsleLog}%2.4f")
-    println("Non log-transformed predictions:\n" + trueVsPredicted.take(3).toString)
-    println("Log-transformed predictions:\n" + trueVsPredictedLog.take(3).toString)
+    println(f"Mean Squared Error: ${mseLog}%2.4f")
+    println(f"Mean Absolute Error: ${maeLog}%2.4f")
+    println(f"Root Mean Squared Log Error: ${rmsleLog}%2.4f")
+    println("Non log-transformed predictions:")
+    trueVsPredicted.take(3).foreach(println)
+    println("Log-transformed predictions:")
+    trueVsPredictedLog.take(3).foreach(println)
 
     val dataDtLog = dataDt.map(lp => LabeledPoint(math.log(lp.label), lp.features))
     val dtModelLog = DecisionTree.trainRegressor(dataDtLog, categoricalFeaturesInfo, impurity, maxDepth, maxBins)
@@ -133,11 +137,13 @@ object SparkRegression {
     val maeLogDt = trueVsPredictedDtLog.map { case (t, p) => absError(t, p) }.mean()
     val rmsleLogDt = math.sqrt(trueVsPredictedDtLog.map { case (t, p) => squaredLogError(t, p) }.mean())
     println("对目标变量进行对数变换后训练决策树模型计算得到的MSE、MAE和RMSLE")
-    println(s"Mean Squared Error: ${mseLogDt}%2.4f")
-    println(s"Mean Absolute Error: ${maeLogDt}%2.4f")
-    println(s"Root Mean Squared Log Error: ${rmsleLogDt}%2.4f")
-    println("Non log-transformed predictions:\n" + trueVsPredictedDt.take(3).toString)
-    println("Log-transformed predictions:\n" + trueVsPredictedDtLog.take(3).toString)
+    println(f"Mean Squared Error: ${mseLogDt}%2.4f")
+    println(f"Mean Absolute Error: ${maeLogDt}%2.4f")
+    println(f"Root Mean Squared Log Error: ${rmsleLogDt}%2.4f")
+    println("Non log-transformed predictions:")
+    trueVsPredictedDt.take(3).foreach(println)
+    println("Log-transformed predictions:")
+    trueVsPredictedDtLog.take(3).foreach(println)
 
     // 对目标变量进行取平方根变换
     val dataSqrt = data.map(lp => LabeledPoint(math.sqrt(lp.label), lp.features))
@@ -150,11 +156,13 @@ object SparkRegression {
     val maeSqrt = trueVsPredictedSqrt.map { case (t, p) => absError(t, p) }.mean()
     val rmsleSqrt = math.sqrt(trueVsPredictedSqrt.map { case (t, p) => squaredLogError(t, p) }.mean())
     println("对目标变量进行取平方根变换后训练线性回归模型计算得到的MSE、MAE和RMSLE")
-    println(s"Mean Squared Error: ${mseSqrt}%2.4f")
-    println(s"Mean Absolute Error: ${maeSqrt}%2.4f")
-    println(s"Root Mean Squared Log Error: ${rmsleSqrt}%2.4f")
-    println("Non sqrt-transformed predictions:\n" + trueVsPredicted.take(3).toString)
-    println("Sqrt-transformed predictions:\n" + trueVsPredictedSqrt.take(3).toString)
+    println(f"Mean Squared Error: ${mseSqrt}%2.4f")
+    println(f"Mean Absolute Error: ${maeSqrt}%2.4f")
+    println(f"Root Mean Squared Log Error: ${rmsleSqrt}%2.4f")
+    println("Non sqrt-transformed predictions:")
+    trueVsPredicted.take(3).foreach(println)
+    println("Sqrt-transformed predictions:")
+    trueVsPredictedSqrt.take(3).foreach(println)
 
     val dataDtSqrt = dataDt.map(lp => LabeledPoint(math.sqrt(lp.label), lp.features))
     val dtModelSqrt = DecisionTree.trainRegressor(dataDtSqrt, categoricalFeaturesInfo, impurity, maxDepth, maxBins)
@@ -165,11 +173,13 @@ object SparkRegression {
     val maeSqrtDt = trueVsPredictedDtSqrt.map { case (t, p) => absError(t, p) }.mean()
     val rmsleSqrtDt = math.sqrt(trueVsPredictedDtSqrt.map { case (t, p) => squaredLogError(t, p) }.mean())
     println("对目标变量进行取平方根变换后训练决策树模型计算得到的MSE、MAE和RMSLE")
-    println(s"Mean Squared Error: ${mseSqrtDt}%2.4f")
-    println(s"Mean Absolute Error: ${maeSqrtDt}%2.4f")
-    println(s"Root Mean Squared Log Error: ${rmsleSqrtDt}%2.4f")
-    println("Non sqrt-transformed predictions:\n" + trueVsPredictedDt.take(3).toString)
-    println("Sqrt-transformed predictions:\n" + trueVsPredictedDtSqrt.take(3).toString)
+    println(f"Mean Squared Error: ${mseSqrtDt}%2.4f")
+    println(f"Mean Absolute Error: ${maeSqrtDt}%2.4f")
+    println(f"Root Mean Squared Log Error: ${rmsleSqrtDt}%2.4f")
+    println("Non sqrt-transformed predictions:")
+    trueVsPredictedDt.take(3).foreach(println)
+    println("Sqrt-transformed predictions:")
+    trueVsPredictedDtSqrt.take(3).foreach(println)
 
     // 创建训练集和测试集
     val trainTestData = data.randomSplit(Array(0.8, 0.2), seed = 42)
@@ -272,9 +282,8 @@ object SparkRegression {
     val maxBinsResults = maxBinsParams.map { param =>
       evaluateDt(trainDataDt, testDataDt, 5, param)
     }
-    print(maxBinsParams)
-    print(maxBinsResults)
-
+    println(maxBinsParams)
+    println(maxBinsResults)
 
     sc.stop()
   }
@@ -306,11 +315,11 @@ object SparkRegression {
     // 各个特征的二元编码的累计长度，确保非0特征在整个特征向量中位于正确的位置
     var step = 0
     // 类型特征
-    for (i <- 2 until 10) {
+    for (i <- 0 until 8) {
       // 特征值在二元编码中的映射，即(特征值, 索引)
       val mapping = mappings(i)
       // 特征值在二元编码中的索引
-      val idx = mapping.get(record(i)).get.toInt
+      val idx = mapping.get(record(i + 2)).get.toInt
       catArr(idx + step) = 1.0
       step = step + mapping.size
     }
