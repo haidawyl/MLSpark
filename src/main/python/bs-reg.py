@@ -283,8 +283,8 @@ if __name__ == "__main__":
     print("Mean Squared Error: %2.4f" % mse_sqrt)
     print("Mean Absolute Error: %2.4f" % mae_sqrt)
     print("Root Mean Squared Log Error: %2.4f" % rmsle_sqrt)
-    print("Non log-transformed predictions:\n" + str(true_vs_predicted.take(3)))
-    print("Log-transformed predictions:\n" + str(true_vs_predicted_sqrt.take(3)))
+    print("Non sqrt-transformed predictions:\n" + str(true_vs_predicted.take(3)))
+    print("Sqrt-transformed predictions:\n" + str(true_vs_predicted_sqrt.take(3)))
 
     data_dt_sqrt = data_dt.map(lambda lp: LabeledPoint(np.sqrt(lp.label), lp.features))
     categorical_features_info = {}
@@ -299,8 +299,8 @@ if __name__ == "__main__":
     print("Mean Squared Error: %2.4f" % mse_sqrt_dt)
     print("Mean Absolute Error: %2.4f" % mae_sqrt_dt)
     print("Root Mean Squared Log Error: %2.4f" % rmsle_sqrt_dt)
-    print("Non log-transformed predictions:\n" + str(true_vs_predicted_dt.take(3)))
-    print("Log-transformed predictions:\n" + str(true_vs_predicted_dt_sqrt.take(3)))
+    print("Non sqrt-transformed predictions:\n" + str(true_vs_predicted_dt.take(3)))
+    print("Sqrt-transformed predictions:\n" + str(true_vs_predicted_dt_sqrt.take(3)))
 
     # 线性模型在经过对数处理后的数据得到较好的性能是意料之中的。因为本质上我们的目的是最小化均方差，
     # 一旦把目标值转换为对数值，便可以有效最小化损失函数，即最小化RMSLE。
