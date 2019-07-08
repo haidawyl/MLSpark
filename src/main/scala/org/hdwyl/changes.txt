@@ -1,0 +1,22 @@
+SparkRegression
+
+line74 split to 2 lines
+line87 split to 2 lines
+line101-103 s" -> f"
+line108-110 s" -> f"
+line117 data -> dataLog
+line123-125 s" -> f"
+line126 split to 2 lines
+line128 split to 2 lines
+line140-142 s" -> f"
+line143 split to 2 lines
+line145 split to 2 lines
+line159-161 s" -> f"
+line162 split to 2 lines
+line164 split to 2 lines
+line176-178 s" -> f"
+line179 split to 2 lines
+line181 split to 2 lines
+line285-286 print -> println
+line318 -> i <- 0 until 8
+line322 -> record(i + 2)
