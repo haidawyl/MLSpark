@@ -11,7 +11,7 @@ import org.apache.spark.{SparkConf, SparkContext}
 /**
   * Created by wangyanl on 2019/7/7.
   */
-object SparkKMean {
+object SparkKMeans {
 
   def main(args: Array[String]) {
     val conf = new SparkConf()
