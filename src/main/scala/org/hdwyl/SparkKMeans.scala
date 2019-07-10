@@ -1,4 +1,4 @@
-package org.hdwyl.mnist
+package org.hdwyl
 
 import breeze.linalg.DenseVector
 import breeze.numerics.pow
@@ -16,6 +16,11 @@ object SparkKMeans {
   def main(args: Array[String]) {
     val conf = new SparkConf()
     val sc = new SparkContext(conf)
+
+    // K-均值算法试图将一系列样本分割成K个不同的类簇（其中K是模型的输入参数）。
+    // K-均值聚类的目的是最小化所有类簇中的方差之和，其形式化的目标函数称为类簇内的方差和
+    // (within cluster sum of squared errors，WCSS)
+    // 即计算每个类簇中样本与类中心的平方差，并在最后求和。
 
     val movies = sc.textFile("hdfs://PATH/ml-100k/u.item")
     println(movies.first())
