@@ -119,7 +119,7 @@ def create_vector(terms, term_dict):
 
 all_terms_bcast = sc.broadcast(all_terms_dict)
 term_vectors = title_terms.map(lambda terms: create_vector(terms, all_terms_bcast.value))
-term_vecors.take(5)
+term_vectors.take(5)
 
 # 将随机种子的值设为42，以保证每次运行的结果相同
 np.random.seed(42)
