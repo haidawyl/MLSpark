@@ -125,19 +125,28 @@ object SparkKMeans {
     val predictionsConverged = movieClusterModelConverged.predict(movieVectors)
     println(predictionsConverged.take(10).mkString(", "))
 
+    // K-均值最小化的目标函数是样本到其类中心的欧拉距离之和
+
+    // 对每个电影计算其特征向量与所属类簇中心向量的距离
     // titlesAndGenres: (电影id, (电影名称, 题材列表))
     // movieFeatures: (电影id, 相关因素)
     val titlesWithFactors = titlesAndGenres.join(movieFeatures)
     val moviesAssigned = titlesWithFactors.map { case (id, ((title, genres), vector)) =>
+      // 使用聚类模型对电影特征向量进行预测
       val prediction = movieClusterModel.predict(vector)
+      // 获取预测值的类簇中心向量
       val clusterCentre = movieClusterModel.clusterCenters(prediction)
+      // 计算电影特征向量与其类簇中心向量的欧拉距离
       val distance = computeDistance(DenseVector(clusterCentre.toArray), DenseVector(vector.toArray))
+      // 电影ID、标题、题材、类别索引，以及电影的特征向量和类中心的距离
       (id, title, genres.mkString(" "), prediction, distance)
     }
+    // 根据预测值进行分组
     val clusterAssignments = moviesAssigned.groupBy { case (id, title, genres, cluster, distance) =>
       cluster
     }.collectAsMap()
 
+    // 枚举每个类簇并输出距离类中心最近的前20部电影
     for ((k, v) <- clusterAssignments.toSeq.sortBy(_._1)) {
       println(s"Cluster $k:")
       val m = v.toSeq.sortBy(_._5)
@@ -147,6 +156,18 @@ object SparkKMeans {
       println("=====\n")
     }
 
+    userFeatures.map { case (id, vector) =>
+      // 使用聚类模型对用户特征向量进行预测
+      val prediction = userClusterModel.predict(vector)
+      // 获取预测值的类簇中心向量
+      val clusterCentre = userClusterModel.clusterCenters(prediction)
+      // 计算用户特征向量与其类簇中心向量的欧拉距离
+      val distance = computeDistance(DenseVector(clusterCentre.toArray), DenseVector(vector.toArray))
+      // 用户ID、类别索引，以及用户的特征向量和类中心的距离
+      (id, prediction, distance)
+    }
+    // TODO 根据用户对电影的打分或者其它可用的元数据，发现这些用户的共同之处。
+
     // 聚类的评估通常分为两部分：内部评估和外部评估。
     // 内部评估表示评估过程使用训练模型时使用的训练数据，外部评估则使用训练数据之外的数据。
 
@@ -154,27 +175,40 @@ object SparkKMeans {
     // Davies-Bouldin指数、Dunn指数和轮廓系数（silhouette coefficient）。
     // 所有这些度量指标都是使类簇内部的样本距离尽可能接近，不同类簇的样本相对较远。
 
+    // MLlib提供的函数computeCost可以方便地计算出给定输入数据RDD[Vector]的WCSS。
+    // 计算电影训练数据的性能
     val movieCost = movieClusterModel.computeCost(movieVectors)
+    // 计算用户训练数据的性能
     val userCost = userClusterModel.computeCost(userVectors)
     // WCSS for movies: 2586.0777166339426
     println("WCSS for movies: " + movieCost)
     // WCSS for users: 1403.4137493396831
     println("WCSS for users: " + userCost)
 
+    // K-均值模型只有一个可以调的参数，就是K，即类中心数目。
+
+    // 将电影数据集分割为训练集和测试集
     val trainTestSplitMovies = movieVectors.randomSplit(Array(0.6, 0.4), 123)
     val trainMovies = trainTestSplitMovies(0)
     val testMovies = trainTestSplitMovies(1)
+    // 计算不同K值训练的K-均值聚类模型的WCSS
     val costsMovies = Seq(2, 3, 4, 5, 10, 20).map { k =>
-      (k, KMeans.train(trainMovies, numIteration, k).computeCost(testMovies))
+      (k, KMeans.train(trainMovies, k, 100).computeCost(testMovies))
     }
     println("Movie clustering cross-validation:")
     costsMovies.foreach { case (k, cost) => println(f"WCSS for K=$k id ${cost}%2.2f") }
 
+    // 从结果可以看出，随着类中心数目增加，WCSS值会出现下降，然后又开始增大。
+    // 另外一个现象，K-均值在交叉验证的情况，WCSS随着K的增大持续减小，但是达到某个值后，
+    // 下降的速率突然会变得很平缓。这时的K通常为最优的K值（这称为拐点）。
+
+    // 将用户数据集分割为训练集和测试集
     val trainTestSplitUsers = userVectors.randomSplit(Array(0.6, 0.4), 123)
     val trainUsers = trainTestSplitUsers(0)
     val testUsers = trainTestSplitUsers(1)
+    // 计算不同K值训练的K-均值聚类模型的WCSS
     val costsUsers = Seq(2, 3, 4, 5, 10, 20).map { k =>
-      (k, KMeans.train(trainUsers, numIteration, k).computeCost(testUsers))
+      (k, KMeans.train(trainUsers, k, 100).computeCost(testUsers))
     }
     println("User clustering cross-validation:")
     costsUsers.foreach { case (k, cost) => println(f"WCSS for K=$k id ${cost}%2.2f") }
