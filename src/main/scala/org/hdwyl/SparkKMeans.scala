@@ -142,12 +142,12 @@ object SparkKMeans {
       (id, title, genres.mkString(" "), prediction, distance)
     }
     // 根据预测值进行分组
-    val clusterAssignments = moviesAssigned.groupBy { case (id, title, genres, cluster, distance) =>
+    val clusterMoviesAssignments = moviesAssigned.groupBy { case (id, title, genres, cluster, distance) =>
       cluster
     }.collectAsMap()
 
     // 枚举每个类簇并输出距离类中心最近的前20部电影
-    for ((k, v) <- clusterAssignments.toSeq.sortBy(_._1)) {
+    for ((k, v) <- clusterMoviesAssignments.toSeq.sortBy(_._1)) {
       println(s"Cluster $k:")
       val m = v.toSeq.sortBy(_._5)
       println(m.take(20).map { case (_, title, genres, _, d) =>
@@ -156,7 +156,31 @@ object SparkKMeans {
       println("=====\n")
     }
 
-    userFeatures.map { case (id, vector) =>
+    // 读取用户数据
+    val users = sc.textFile("hdfs://PATH/ml-100k/u.user").
+      map(_.split("\\|")).map { fields =>
+      (fields(0).toInt, (fields(1).toInt, fields(2), fields(3), fields(4)))
+    }
+
+    // 用户数量
+    val numUsers = rawRatings.map { case Array(user, movie, rating) => user }.distinct().count().toInt
+    // 电影数量
+    val numMovies = rawRatings.map { fields => fields(1) }.distinct().count().toInt
+    // 用户-电影评分矩阵
+    val vectors = List.tabulate(numUsers)(n => DenseVector.zeros[Double](numMovies))
+    rawRatings.map { case Array(user, movie, rating) =>
+      vectors(user.toInt - 1).update(movie.toInt - 1, rating.toDouble)
+    }
+    val usersMoviesRating = sc.parallelize(vectors).zipWithIndex.map { case (vector, userIndex) =>
+      val ratings = vector.toArray.zipWithIndex.filter(_._1 != 0.0).map { case (rating, movieIndex) =>
+        (movieIndex.toInt + 1, rating)
+      }
+      // (用户ID, 用户对电影的评分)
+      (userIndex.toInt + 1, ratings)
+    }
+
+    val usersWithFactors = users.join(usersMoviesRating).join(userFeatures)
+    val usersAssigned = usersWithFactors.map { case (id, (((age, gender, occupation, zipcode), ratings), vector)) =>
       // 使用聚类模型对用户特征向量进行预测
       val prediction = userClusterModel.predict(vector)
       // 获取预测值的类簇中心向量
@@ -164,9 +188,21 @@ object SparkKMeans {
       // 计算用户特征向量与其类簇中心向量的欧拉距离
       val distance = computeDistance(DenseVector(clusterCentre.toArray), DenseVector(vector.toArray))
       // 用户ID、类别索引，以及用户的特征向量和类中心的距离
-      (id, prediction, distance)
+      (id, age, gender, occupation, zipcode, ratings, prediction, distance)
     }
-    // TODO 根据用户对电影的打分或者其它可用的元数据，发现这些用户的共同之处。
+    // 根据预测值进行分组
+    val clusterUsersAssignments = usersAssigned.groupBy { case (id, age, gender, occupation, zipcode, ratings, cluster, distance) =>
+      cluster
+    }.collectAsMap()
+    // 枚举每个类簇并输出距离类中心最近的前20部电影
+    for ((k, v) <- clusterUsersAssignments.toSeq.sortBy(_._1)) {
+      println(s"Cluster $k:")
+      val u = v.toSeq.sortBy(_._7)
+      println(u.take(20).map { case (_, age, gender, occupation, zipcode, ratings, _, d) =>
+        (age, gender, occupation, zipcode, ratings.mkString(", "), d)
+      }.mkString("\n"))
+      println("=====\n")
+    }
 
     // 聚类的评估通常分为两部分：内部评估和外部评估。
     // 内部评估表示评估过程使用训练模型时使用的训练数据，外部评估则使用训练数据之外的数据。
