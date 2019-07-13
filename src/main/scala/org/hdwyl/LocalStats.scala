@@ -133,7 +133,7 @@ object LocalStats {
     val titleTerms = movieTitles.map(title => title.split(" "))
     // 下面取回所有可能的词，以便构建一个词到序号的映射字典
     val pattern = new Regex("[,\\(\\):]")
-    val allTermsWithIndex = titleTerms.flatMap(e => e).map(e => pattern replaceAllIn (e, "")).distinct.zipWithIndex.toMap
+    val allTermsWithIndex = titleTerms.flatMap(e => e).map(e => pattern replaceAllIn(e, "")).distinct.zipWithIndex.toMap
 
     // Total number of terms: 2457
     println("Total number of terms: %d".format(allTermsWithIndex.size))
@@ -207,11 +207,13 @@ object LocalStats {
     // 计算评分的中位数
     val medianRating = getMedian(ratings)
     // 用户数量
-    val numUsers = 943
+    // val numUsers = 943
+    val numUsers = ratingData.map { case Array(user, movie, rating, ts) => user }.distinct.size
     // 用户的平均评分
     val ratingsPerUser = numRatings * 1.0 / numUsers
     // 电影数量
-    val numMovies = 1682
+    // val numMovies = 1682
+    val numMovies = ratingData.map(fields => fields(1)).distinct.size
     // 电影的平均评分
     val ratingsPerMovie = numRatings * 1.0 / numMovies
     // Min rating: 1
@@ -251,6 +253,54 @@ object LocalStats {
 
     val timeOfDaysWithIndex = timeOfDays.zipWithIndex
     // println(timeOfDaysWithIndex)
+
+    // 用户-电影评分矩阵
+    val matrix = DenseMatrix.zeros[Double](numUsers, numMovies)
+    val vectors = List.tabulate(numUsers)(n => DenseVector.zeros[Double](numMovies))
+    var vectorsFromMatrix: List[DenseVector[Double]] = List()
+
+    ratingData.map { case Array(user, movie, rating, ts) =>
+      matrix.update(user.toInt - 1, movie.toInt - 1, rating.toDouble)
+      vectors(user.toInt - 1).update(movie.toInt - 1, rating.toDouble)
+    }
+
+    for (row <- 0 until numUsers) {
+      val vector = DenseVector.zeros[Double](numMovies)
+      for (col <- 0 until numMovies) {
+        vector.update(col, matrix.valueAt(row, col))
+      }
+      vectorsFromMatrix = vectorsFromMatrix :+ vector
+    }
+    /*
+    for (i <- 0 until 10) {
+      println(Utils.printVector(vectorsFromMatrix(i), numMovies))
+      println(Utils.printVector(vectors(i), numMovies))
+    }
+    */
+
+    for (i <- 0 until 10) {
+      println("vector from matrix")
+      vectorsFromMatrix(i).toArray.map(x => (x, 1)).groupBy(_._1).map(e => (e._1, e._2.size)).filter(e => e._1 != 0).toList.sortBy(_._2).reverse.foreach(println)
+      println("vector")
+      vectors(i).toArray.map(x => (x, 1)).groupBy(_._1).map(e => (e._1, e._2.size)).filter(e => e._1 != 0).toList.sortBy(_._2).reverse.foreach(println)
+    }
+
+    val usersMoviesRating = vectors.zipWithIndex.map { case (vector, userIndex) =>
+      val ratings = vector.toArray.zipWithIndex.filter(_._1 != 0.0).map { case (rating, movieIndex) =>
+        (movieIndex.toInt + 1, rating)
+      }
+      // (用户ID, 用户对电影的评分)
+      (userIndex.toInt + 1, ratings)
+    }
+    var sameUserCount = 0
+    for (id <- 1 to numUsers) {
+      val userRatings1 = usersMoviesRating.slice(id - 1, id).map { case (userid, ratings) => ratings.mkString("") }.mkString("")
+      val userRatings2 = ratingData.filter(fields => fields(0).toInt == id).sortBy(fields => fields(1).toInt).map(fields => (fields(1), fields(2).toDouble)).mkString("")
+      if (userRatings1.equals(userRatings2)) {
+        sameUserCount += 1
+      }
+    }
+    println(s"sameUserCount = ${sameUserCount}")
 
     file.close()
   }
