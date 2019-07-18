@@ -22,7 +22,7 @@ object SparkDimensionReduction {
     val conf = new SparkConf()
     val sc = new SparkContext(conf)
 
-    val path: String = s"hdfs://PATH/${tenantPath}/lfw/*"
+    val path: scala.Predef.String = s"hdfs://PATH/${tenantPath}/lfw/*"
     // wholeTextFiles将返回一个由键-值对组成的RDD，键是文件位置，值是整个文件的内容。
     val rdd = sc.wholeTextFiles(path)
     println(rdd.first())
