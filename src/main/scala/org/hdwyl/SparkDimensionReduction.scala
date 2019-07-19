@@ -1,10 +1,11 @@
 package org.hdwyl
 
 import java.awt.image.BufferedImage
-import java.io.File
-import javax.imageio.ImageIO
+import java.io._
 
 import breeze.linalg.{DenseMatrix, DenseVector, csvwrite}
+import javax.imageio.ImageIO
+import org.apache.hadoop.fs.{FileSystem, Path}
 import org.apache.spark.mllib.feature.StandardScaler
 import org.apache.spark.mllib.linalg.Vectors
 import org.apache.spark.mllib.linalg.distributed.RowMatrix
