@@ -3,7 +3,7 @@ package org.hdwyl
 import java.awt.image.BufferedImage
 import java.io._
 
-import breeze.linalg.{DenseMatrix, DenseVector, csvwrite}
+import breeze.linalg.{DenseMatrix, DenseVector}
 import javax.imageio.ImageIO
 import org.apache.hadoop.fs.{FileSystem, Path}
 import org.apache.spark.mllib.feature.StandardScaler
@@ -25,22 +25,33 @@ object SparkDimensionReduction {
 
     val path: scala.Predef.String = s"hdfs://PATH/${tenantPath}/lfw/*"
     // wholeTextFiles将返回一个由键-值对组成的RDD，键是文件位置，值是整个文件的内容。
-    val rdd = sc.wholeTextFiles(path)
-    println(rdd.first())
+    // val rdd = sc.wholeTextFiles(path)
+    // binaryFiles将返回一个由键-值对组成的RDD，键是文件位置，值是整个文件的内容。
+    val rdd = sc.binaryFiles(path)
 
-    val files = rdd.map { case (fileName, content) => fileName }
-    println(files.first())
-    println(files.count())
+    val contents = rdd.map { case (fileName, content) => content }
 
-    val aeImage = loadImageFromFile(files.first())
+    val in = new ByteArrayInputStream(contents.first().toArray())
+    val aeImage = loadImageFromInputStream(in)
     println(aeImage)
 
     val grayImage = processImage(aeImage, 100, 100)
     println(grayImage)
 
-    ImageIO.write(grayImage, "jpg", new File("hdfs://PATH/aeGray.jpg"))
+    val baos = new ByteArrayOutputStream()
+    ImageIO.write(grayImage, "jpg", baos)
 
-    val pixels = files.map(f => extractPixels(f, 50, 50))
+    val fs = FileSystem.get(sc.hadoopConfiguration)
+    val imageOutputPath: scala.Predef.String = s"hdfs://PATH/${tenantPath}/lfw/aeGray.jpg"
+    println(s"imageOutputPath = ${imageOutputPath}")
+    val out = fs.create(new Path(imageOutputPath))
+    out.write(baos.toByteArray)
+    out.close()
+    
+    val pixels = contents.map { c => 
+      val in = new ByteArrayInputStream(c.toArray())
+      extractPixels(in, 50, 50)
+    }
     println(pixels.take(10).map(_.take(10).mkString("", ",", ", ...")).mkString("\n"))
 
     // 为每一张图片创建MLlib向量对象
@@ -68,7 +79,12 @@ object SparkDimensionReduction {
     println(rows, cols)
 
     val pcBreeze = new DenseMatrix(rows, cols, pc.toArray)
-    csvwrite(new File("hdfs://PATH/pc.csv"), pcBreeze)
+    val pcFile: scala.Predef.String = s"hdfs://PATH/${tenantPath}/lfw/pc"
+    val pcPath = new Path(pcFile)
+    if (fs.exists(pcPath)) {
+      fs.delete(pcPath, true)
+    }
+    sc.parallelize(pcBreeze.toArray).saveAsTextFile(pcFile)
 
     // 用矩阵乘法把图像矩阵和主成分矩阵相乘来实现投影
     val projected = matrix.multiply(pc)
@@ -104,11 +120,11 @@ object SparkDimensionReduction {
   /**
     * 从文件中读取图片
     *
-    * @param path
+    * @param input
     * @return
     */
-  def loadImageFromFile(path: String): BufferedImage = {
-    ImageIO.read(new File(path))
+  def loadImageFromInputStream(input: InputStream): BufferedImage = {
+    ImageIO.read(input)
   }
 
   /**
@@ -145,18 +161,24 @@ object SparkDimensionReduction {
 
   /**
     *
-    * @param path
+    * @param input
     * @param width
     * @param height
     * @return
     */
-  def extractPixels(path: String, width: Int, height: Int): Array[Double] = {
-    val raw = loadImageFromFile(path)
+  def extractPixels(input: InputStream, width: Int, height: Int): Array[Double] = {
+    val raw = loadImageFromInputStream(input)
     val processed = processImage(raw, width, height)
     getPixelsFromImage(processed)
   }
 
-
+  /**
+    *
+    * @param array1
+    * @param array2
+    * @param tolerance
+    * @return
+    */
   def approxEqual(array1: Array[Double], array2: Array[Double], tolerance: Double = 1e-6): Boolean = {
     // note we ignore sign of the principal component / singular vector elements
     val bools = array1.zip(array2).map { case (v1, v2) => if (math.abs(math.abs(v1) - math.abs(v2)) > tolerance) false else true }
