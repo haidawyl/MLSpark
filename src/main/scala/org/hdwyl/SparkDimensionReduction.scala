@@ -2,9 +2,9 @@ package org.hdwyl
 
 import java.awt.image.BufferedImage
 import java.io._
+import javax.imageio.ImageIO
 
 import breeze.linalg.{DenseMatrix, DenseVector}
-import javax.imageio.ImageIO
 import org.apache.hadoop.fs.{FileSystem, Path}
 import org.apache.spark.mllib.feature.StandardScaler
 import org.apache.spark.mllib.linalg.Vectors
@@ -47,8 +47,8 @@ object SparkDimensionReduction {
     val out = fs.create(new Path(imageOutputPath))
     out.write(baos.toByteArray)
     out.close()
-    
-    val pixels = contents.map { c => 
+
+    val pixels = contents.map { c =>
       val in = new ByteArrayInputStream(c.toArray())
       extractPixels(in, 50, 50)
     }
@@ -84,7 +84,13 @@ object SparkDimensionReduction {
     if (fs.exists(pcPath)) {
       fs.delete(pcPath, true)
     }
-    sc.parallelize(pcBreeze.toArray).saveAsTextFile(pcFile)
+    val pcArray = pcBreeze.toArray
+    val pcMatArray = Array.ofDim[Double](rows, cols)
+    for (i <- 0 until rows) {
+      pcMatArray(i) = pcArray.slice(i * cols, (i + 1) * cols)
+    }
+    sc.parallelize(pcMatArray).coalesce(1).saveAsTextFile(pcFile)
+    Utils.printMatrix(pcBreeze, cols)
 
     // 用矩阵乘法把图像矩阵和主成分矩阵相乘来实现投影
     val projected = matrix.multiply(pc)
@@ -114,11 +120,32 @@ object SparkDimensionReduction {
       approxEqual(v1.toArray, v2.toArray)
     }.filter(b => true).count()
 
+    // PCA和SVD都是确定性模型，就是对于给定输入数据，总可以产生确定结果的模型。
+    // 这两个模型都确定可以返回多个主成分或者奇异值，因此控制模型的唯一参数就是k。
+    // 就像聚类模型，增加k总是可以提高模型的表现（对于聚类，表现在相对误差函数值；
+    // 对于PCA和SVD，整体的不确定性表现在k个成分上）。
+    // 因此，选择k的值需要折中，看是要包含尽量多的数据的结构信息，还是要保持投影数据的低维度。
+
+    // 在LFW数据集上估计SVD的k值
+    // 通过观察在图像数据集上计算SVD得到的奇异值，可以确定奇异值每次运行结果相同，并且是按照递减的顺序返回的。
+    val sValues = (1 to 5).map {
+      i => matrix.computeSVD(i, computeU = false).s
+    }
+    sValues.foreach(println)
+
+    // 为了估算SVD（和PCA）做聚类时的k值，以一个较大的k的变化范围绘制一个奇异值图是很有用的。
+    // 可以看到每增加一个奇异值时增加的变化总量是否基本保持不变。
+    val svd300 = matrix.computeSVD(300, computeU = false)
+    val sMatrix = new DenseMatrix(1, 300, svd300.s.toArray)
+    val sFile: scala.Predef.String = s"hdfs://PATH/${tenantPath}/lfw/s"
+    sc.parallelize(sMatrix.toArray).coalesce(1).saveAsTextFile(sFile)
+    Utils.printMatrix(sMatrix, 300)
+
     sc.stop()
   }
 
   /**
-    * 从文件中读取图片
+    * 从输入流中读取图片
     *
     * @param input
     * @return
