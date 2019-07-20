@@ -5,6 +5,9 @@ import java.io._
 import javax.imageio.ImageIO
 
 import breeze.linalg.{DenseMatrix, DenseVector}
+import org.apache.commons.compress.archivers.tar.{TarArchiveEntry, TarArchiveInputStream}
+import org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream
+import org.apache.commons.langs.StringUtils
 import org.apache.hadoop.fs.{FileSystem, Path}
 import org.apache.spark.mllib.feature.StandardScaler
 import org.apache.spark.mllib.linalg.Vectors
@@ -22,6 +25,11 @@ object SparkDimensionReduction {
 
     val conf = new SparkConf()
     val sc = new SparkContext(conf)
+    val fs = FileSystem.get(sc.hadoopConfiguration)
+    
+    val destPath: scala.Predef.String = s"hdfs://PATH/${tenantPath}/"
+    val inputTar = new ByteArrayInputStream(sc.binaryFiles(s"hdfs://PATH/${tenantPath}/lfw-a.tgz").first()._2.toArray())
+    decompress(fs, destPath, inputTar)
 
     val path: scala.Predef.String = s"hdfs://PATH/${tenantPath}/lfw/*"
     // wholeTextFiles将返回一个由键-值对组成的RDD，键是文件位置，值是整个文件的内容。
@@ -41,7 +49,6 @@ object SparkDimensionReduction {
     val baos = new ByteArrayOutputStream()
     ImageIO.write(grayImage, "jpg", baos)
 
-    val fs = FileSystem.get(sc.hadoopConfiguration)
     val imageOutputPath: scala.Predef.String = s"hdfs://PATH/${tenantPath}/lfw/aeGray.jpg"
     println(s"imageOutputPath = ${imageOutputPath}")
     val out = fs.create(new Path(imageOutputPath))
@@ -211,4 +218,35 @@ object SparkDimensionReduction {
     val bools = array1.zip(array2).map { case (v1, v2) => if (math.abs(math.abs(v1) - math.abs(v2)) > tolerance) false else true }
     bools.fold(true)(_ & _)
   }
+
+  /**
+    *
+    * @param destPath
+    * @param inputTar
+    */
+  def decompress(fs: FileSystem, destPath: String, inputTar: InputStream) = {
+    val tar = new TarArchiveInputStream(new GzipCompressorInputStream(interTar))
+    var entry: TarArchiveEntry = null
+    
+    do {
+      entry = tar.getNextEntry().asInstanceOf[TarArchiveEntry]
+      if (entry != null) {
+        val fileName = entry.getName()
+        println(s"fileName = ${fileName}")
+        val filePath = new Path(destPath + fileName)
+        if (StringUtils.endsWithIgnoreCase(fileName, ".jpg")) {
+          val out = fs.create(filePath)
+          var byteFile = Array.ofDim[Byte](entry.getSize.toInt)
+          tar.read(byteFile)
+          out.write(byteFile)
+          out.close()
+        } else {
+          if (!fs.exists(filePath)) {
+            fs.mkdirs(filePath)
+          }
+        }
+      }
+    } while (entry != null)
+  }
+
 }
