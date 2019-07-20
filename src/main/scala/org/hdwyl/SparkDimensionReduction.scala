@@ -7,7 +7,7 @@ import javax.imageio.ImageIO
 import breeze.linalg.{DenseMatrix, DenseVector}
 import org.apache.commons.compress.archivers.tar.{TarArchiveEntry, TarArchiveInputStream}
 import org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream
-import org.apache.commons.langs.StringUtils
+import org.apache.commons.lang3.StringUtils
 import org.apache.hadoop.fs.{FileSystem, Path}
 import org.apache.spark.mllib.feature.StandardScaler
 import org.apache.spark.mllib.linalg.Vectors
@@ -225,7 +225,7 @@ object SparkDimensionReduction {
     * @param inputTar
     */
   def decompress(fs: FileSystem, destPath: String, inputTar: InputStream) = {
-    val tar = new TarArchiveInputStream(new GzipCompressorInputStream(interTar))
+    val tar = new TarArchiveInputStream(new GzipCompressorInputStream(inputTar))
     var entry: TarArchiveEntry = null
     
     do {
