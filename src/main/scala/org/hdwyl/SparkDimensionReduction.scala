@@ -14,7 +14,26 @@ import org.apache.spark.mllib.linalg.Vectors
 import org.apache.spark.mllib.linalg.distributed.RowMatrix
 import org.apache.spark.{SparkConf, SparkContext}
 
+import scala.collection.mutable
+
 /**
+  * 降维方法从一个D维的数据输入提取出k维表示，k一般远远小于D。
+  * 因此，降维方法本身是一种预处理方法，或者说是一种特征转换的方法，而不是模型预测的方法。
+  * MLlib提供两种相似的降低维度的模型：
+  * PCA（Principal Components Analysis，主成分分析法）和
+  * SVD（Singular Value Decomposition，奇异值分解法）。
+  * PCA处理一个数据矩阵，抽取矩阵中k个主向量，主向量彼此不相关。
+  * 计算结果中，第一个主向量表示输入数据的最大变化方向。
+  * 之后的每个主向量依次代表不考虑之前计算过的所有方向时最大的变化方向。
+  * 因此，返回的k个主成分代表了输入数据可能的最大变化。
+  * SVD试图将一个m×n的矩阵分解为三个主成分矩阵：
+  *  m×k维矩阵U
+  *  k×k维对角阵S，S中的元素是奇异值
+  *  k×n维矩阵V
+  * U = U x S x VT
+  * PCA和SVD都是矩阵分解技术，从某种意义上来说，它们都把原来的矩阵分解成一些维度（或秩）较低的矩阵。
+  * 很多降维技术都是基于矩阵分解的。
+  *
   * Created by wangyanl on 2019/7/16.
   */
 object SparkDimensionReduction {
@@ -26,20 +45,24 @@ object SparkDimensionReduction {
     val conf = new SparkConf()
     val sc = new SparkContext(conf)
     val fs = FileSystem.get(sc.hadoopConfiguration)
-    
+
     val destPath: scala.Predef.String = s"hdfs://PATH/${tenantPath}/"
     val inputTar = new ByteArrayInputStream(sc.binaryFiles(s"hdfs://PATH/${tenantPath}/lfw-a.tgz").first()._2.toArray())
     decompress(fs, destPath, inputTar)
 
     val path: scala.Predef.String = s"hdfs://PATH/${tenantPath}/lfw/*"
-    // wholeTextFiles将返回一个由键-值对组成的RDD，键是文件位置，值是整个文件的内容。
+    // wholeTextFiles将返回一个由键-值对组成的RDD，键是文件位置，值是整个文件的内容（文本）。
     // val rdd = sc.wholeTextFiles(path)
-    // binaryFiles将返回一个由键-值对组成的RDD，键是文件位置，值是整个文件的内容。
+    // binaryFiles将返回一个由键-值对组成的RDD，键是文件位置，值是整个文件的内容（二进制）。
     val rdd = sc.binaryFiles(path)
 
-    val contents = rdd.map { case (fileName, content) => content }
+    // val contents = rdd.map { case (fileName, content) => content }
+    // val in = new ByteArrayInputStream(contents.first().toArray())
 
-    val in = new ByteArrayInputStream(contents.first().toArray())
+    val imagesMap = decompress(inputTar)
+    val contents = sc.parallelize(imagesMap.values.toList)
+    val in = new ByteArrayInputStream(contents.first())
+
     val aeImage = loadImageFromInputStream(in)
     println(aeImage)
 
@@ -56,7 +79,8 @@ object SparkDimensionReduction {
     out.close()
 
     val pixels = contents.map { c =>
-      val in = new ByteArrayInputStream(c.toArray())
+      // val in = new ByteArrayInputStream(c.toArray())
+      val in = new ByteArrayInputStream(c)
       extractPixels(in, 50, 50)
     }
     println(pixels.take(10).map(_.take(10).mkString("", ",", ", ...")).mkString("\n"))
@@ -220,14 +244,16 @@ object SparkDimensionReduction {
   }
 
   /**
+    * 解压文件
     *
+    * @param fs
     * @param destPath
     * @param inputTar
     */
   def decompress(fs: FileSystem, destPath: String, inputTar: InputStream) = {
     val tar = new TarArchiveInputStream(new GzipCompressorInputStream(inputTar))
     var entry: TarArchiveEntry = null
-    
+
     do {
       entry = tar.getNextEntry().asInstanceOf[TarArchiveEntry]
       if (entry != null) {
@@ -236,7 +262,7 @@ object SparkDimensionReduction {
         val filePath = new Path(destPath + fileName)
         if (StringUtils.endsWithIgnoreCase(fileName, ".jpg")) {
           val out = fs.create(filePath)
-          var byteFile = Array.ofDim[Byte](entry.getSize.toInt)
+          val byteFile = Array.ofDim[Byte](entry.getSize.toInt)
           tar.read(byteFile)
           out.write(byteFile)
           out.close()
@@ -247,6 +273,34 @@ object SparkDimensionReduction {
         }
       }
     } while (entry != null)
+  }
+
+  /**
+    * 解压文件
+    *
+    * @param inputTar
+    */
+  def decompress(inputTar: InputStream): mutable.Map[String, Array[Byte]] = {
+    val imageMap = mutable.Map[String, Array[Byte]]()
+
+    val tar = new TarArchiveInputStream(new GzipCompressorInputStream(inputTar))
+    var entry: TarArchiveEntry = null
+
+    do {
+      entry = tar.getNextEntry().asInstanceOf[TarArchiveEntry]
+      if (entry != null) {
+        val fileName = entry.getName()
+        println(s"fileName = ${fileName}")
+        if (StringUtils.endsWithIgnoreCase(fileName, ".jpg")) {
+          val byteFile = Array.ofDim[Byte](entry.getSize.toInt)
+          tar.read(byteFile)
+          imageMap += (fileName -> byteFile)
+        } else {
+        }
+      }
+    } while (entry != null)
+
+    imageMap
   }
 
 }
