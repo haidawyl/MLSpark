@@ -169,6 +169,10 @@ object SparkDimensionReduction {
     val svd300 = matrix.computeSVD(300, computeU = false)
     val sMatrix = new DenseMatrix(1, 300, svd300.s.toArray)
     val sFile: scala.Predef.String = s"hdfs://PATH/${tenantPath}/lfw/s"
+    val sPath = new Path(sFile)
+    if (fs.exists(sPath)) {
+      fs.delete(sPath, true)
+    }
     sc.parallelize(sMatrix.toArray).coalesce(1).saveAsTextFile(sFile)
     Utils.printMatrix(sMatrix, 300)
 
