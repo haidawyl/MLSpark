@@ -91,8 +91,10 @@ object SparkDimensionReduction {
     vectors.cache()
 
     // 在运行降维模型尤其是PCA之前，通常会对输入数据进行标准化。
+    // 使用MLlib的特征包提供的内建StandardScaler函数进行标准化。
     // 对于稠密的输入数据可以提取平均值，但是对于稀疏数据，提取平均值将会使之变稠密。
     // 对于很高维度的输入，这将很可能耗尽可用内存资源，所以是不建议使用的。
+    // 调用fit函数会触发基于RDD[Vector]的计算。
     val scaler = new StandardScaler(withMean = true, withStd = false).fit(vectors)
 
     // 使用返回的scaler来转换原始的图像向量，让所有向量减去当前列的平均值
@@ -100,14 +102,26 @@ object SparkDimensionReduction {
 
     // 训练降维模型
     // MLlib中的降维模型需要向量作为输入。
+    // PCA和SVD的计算是通过提供基于RowMatrix的方法实现的。
     val matrix = new RowMatrix(scaledVectors)
+    // 调用computePrincipalComponents来计算分布式矩阵的前k个主成分
     val K = 10
     val pc = matrix.computePrincipalComponents(K)
+    // 此时便训练得到了PCA模型
+
+    // WARN LAPACK: Failed to load implementation from: com.github.fommil.netlib.NativeSystemLAPACK
+    // WARN LAPACK: Failed to load implementation from: com.github.fommil.netlib. NativeRefLAPACK
+    // 上述警告是说MLlib使用的线性代数库不能加载本地库。这时，基于Java的备选库会被使用。
 
     // 可视化特征脸
     val rows = pc.numRows
     val cols = pc.numCols
+    // 2500, 10: 主成分矩阵有2500行, 10列
+    // 每张图片的维度是50×50，我们计算得到了前K个主成分向量，每一个向量的维度都和输入图片的维度一样。
+    // 我们可以认为这些主成分是一组包含了原始数据主要变化的隐层（隐藏）特征。
     println(rows, cols)
+
+    // 因为每一个主成分都和原始图像有相同维度，所以每一个成分本身可以看作是一张图像。
 
     val pcBreeze = new DenseMatrix(rows, cols, pc.toArray)
     val pcFile: scala.Predef.String = s"hdfs://PATH/${tenantPath}/lfw/pc"
@@ -123,10 +137,19 @@ object SparkDimensionReduction {
     sc.parallelize(pcMatArray).coalesce(1).saveAsTextFile(pcFile)
     Utils.printMatrix(pcBreeze, cols)
 
+    // 降维方法最终的目标是要得到数据更加压缩化的表示，并能包含原始数据之中重要的特征和变化。
+    // 为了做到这一点，我们需要通过使用训练好的模型，把原始数据投影到用主成分表示的新的低维空间上。
+
+    // 使用PCA投影数据
     // 用矩阵乘法把图像矩阵和主成分矩阵相乘来实现投影
+    // matrix: 图像矩阵
+    // pc: 主成分矩阵
     val projected = matrix.multiply(pc)
+    // 1055, 10，每幅2500维度的图像已经被转换成为一个大小为10的向量。
     println(projected.numRows(), projected.numCols())
 
+    // 这些以向量形式表示的投影后的数据可以用来作为另一个机器学习模型的输入。
+    // 例如我们可以通过使用这些投影后的脸的投影数据和一些没有脸的图像产生的投影数据，共同训练一个面部识别模型。
     println(projected.rows.take(5).mkString("\n"))
 
     // 在本例中，SVD计算产生的右奇异向量等同于我们计算得到的主成分。
@@ -290,7 +313,7 @@ object SparkDimensionReduction {
       entry = tar.getNextEntry().asInstanceOf[TarArchiveEntry]
       if (entry != null) {
         val fileName = entry.getName()
-        println(s"fileName = ${fileName}")
+        // println(s"fileName = ${fileName}")
         val filePath = new Path(destPath + fileName)
         if (StringUtils.endsWithIgnoreCase(fileName, ".jpg")) {
           val out = fs.create(filePath)
@@ -322,7 +345,7 @@ object SparkDimensionReduction {
       entry = tar.getNextEntry().asInstanceOf[TarArchiveEntry]
       if (entry != null) {
         val fileName = entry.getName()
-        println(s"fileName = ${fileName}")
+        // println(s"fileName = ${fileName}")
         if (StringUtils.endsWithIgnoreCase(fileName, ".jpg")) {
           val byteFile = Array.ofDim[Byte](entry.getSize.toInt)
           tar.read(byteFile)
