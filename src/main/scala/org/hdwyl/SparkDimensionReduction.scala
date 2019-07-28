@@ -176,6 +176,16 @@ object SparkDimensionReduction {
   }
 
   /**
+    * 从文件中读取图片
+    *
+    * @param path
+    * @return
+    */
+  def loadImageFromFile(path: String): BufferedImage = {
+    ImageIO.read(new File(path))
+  }
+
+  /**
     * 从输入流中读取图片
     *
     * @param input
@@ -206,15 +216,33 @@ object SparkDimensionReduction {
   }
 
   /**
+    * 提取图片的像素值
     *
     * @param image
     * @return
     */
   def getPixelsFromImage(image: BufferedImage): Array[Double] = {
+    // 图片宽度
     val width = image.getWidth
+    // 图片高度
     val height = image.getHeight
+    // 创建宽度*高度大小的Double类型数组
     val pixels = Array.ofDim[Double](width * height)
+    // 提取图片的像素值
     image.getData.getPixels(0, 0, width, height, pixels)
+  }
+
+  /**
+    *
+    * @param path
+    * @param width
+    * @param height
+    * @return
+    */
+  def extractPixels(path: String, width: Int, height: Int): Array[Double] = {
+    val raw = loadImageFromFile(path)
+    val processed = processImage(raw, width, height)
+    getPixelsFromImage(processed)
   }
 
   /**
