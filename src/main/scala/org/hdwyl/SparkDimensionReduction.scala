@@ -152,17 +152,22 @@ object SparkDimensionReduction {
     // 例如我们可以通过使用这些投影后的脸的投影数据和一些没有脸的图像产生的投影数据，共同训练一个面部识别模型。
     println(projected.rows.take(5).mkString("\n"))
 
+    // PCA和SVD有着密切的联系，可以使用SVD恢复出相同的主成分向量，并且应用相同的投影矩阵投射到主成分空间。
     // 在本例中，SVD计算产生的右奇异向量等同于我们计算得到的主成分。
+    // 可以通过在图像矩阵上计算SVD并比较右奇异向量和PCA的结果说明这一点。
 
     val svd = matrix.computeSVD(10, computeU = true)
     println(s"U dimension: (${svd.U.numRows}, ${svd.U.numCols})")
     println(s"S dimension: (${svd.s.size}, )")
     println(s"V dimension: (${svd.V.numRows}, ${svd.V.numCols})")
 
-    println(approxEqual(Array(1.0, 2.0, 3.0), Array(1.0, 2.0, 3.0)))
-    println(approxEqual(Array(1.0, 2.0, 3.0), Array(3.0, 2.0, 1.0)))
-    println(approxEqual(svd.V.toArray, pc.toArray))
+    // 矩阵V和PCA的结果完全一样（不考虑正负号和浮点数误差）。
+    println(approxEqual(Array(1.0, 2.0, 3.0), Array(1.0, 2.0, 3.0))) // true
+    println(approxEqual(Array(1.0, 2.0, 3.0), Array(3.0, 2.0, 1.0))) // false
+    println(approxEqual(svd.V.toArray, pc.toArray)) // true
 
+    // 另外一个相关性体现在：矩阵U和向量S（或者严格来讲，对角矩阵S）的乘积和
+    // PCA中用来把原始图像数据投影到K个主成分构成的空间中的投影矩阵相等
     val breezeS = DenseVector(svd.s.toArray)
     val projectedSVD = svd.U.rows.map { v =>
       val breezeV = DenseVector(v.toArray)
@@ -173,6 +178,8 @@ object SparkDimensionReduction {
     val cnt = projected.rows.zip(projectedSVD).map { case (v1, v2) =>
       approxEqual(v1.toArray, v2.toArray)
     }.filter(b => true).count()
+    println(s"cnt = ${cnt}") // 1055
+    // 上述计算结果表明投影后的每一行和SVD投影后的每一行相等。
 
     // PCA和SVD都是确定性模型，就是对于给定输入数据，总可以产生确定结果的模型。
     // 这两个模型都确定可以返回多个主成分或者奇异值，因此控制模型的唯一参数就是k。
@@ -189,6 +196,7 @@ object SparkDimensionReduction {
 
     // 为了估算SVD（和PCA）做聚类时的k值，以一个较大的k的变化范围绘制一个奇异值图是很有用的。
     // 可以看到每增加一个奇异值时增加的变化总量是否基本保持不变。
+    // 计算最大的300个奇异值
     val svd300 = matrix.computeSVD(300, computeU = false)
     val sMatrix = new DenseMatrix(1, 300, svd300.s.toArray)
     val sFile: scala.Predef.String = s"hdfs://PATH/${tenantPath}/lfw/s"
@@ -286,6 +294,7 @@ object SparkDimensionReduction {
   }
 
   /**
+    * 比较两个矩阵的向量数据
     *
     * @param array1
     * @param array2
