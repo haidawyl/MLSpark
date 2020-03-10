@@ -68,6 +68,53 @@ object LogCollection {
            jobConf.setOutputFormat(classOf[TableOutputFormat])
            jobConf.set(TableOutputFormat.OUTPUT_TABLE, talbeName)
            
+           stream.map(_.value())
+             .map(value => {
+               import org.json4s.jackson.JsonMethods._
+               implicit val formats: DefaultFormats.type = DefaultFormats
+               val json = parse(value)
+               // 
+               json.extract[HbaseTableRow]
+             })
+             .foreachRDD(
+               rdd => {
+                 val rowRdd = rdd.map(row => convertToPut(row))
+                 rowRdd.saveAsHadoopDataset(jobConf)
+               }
+             )
+           
+           ssc.start()
+           ssc.awaitTermination()
+       }
+       catch {
+         case e: Exception => logger.error(e.getMessage, e)
+           throw e
        }
    }
+   
+   // convert HBaseTableRow to Put
+   def convertToPut(row: HBaseTableRow): (ImmutableBytesWritable, Put) = {
+     var rowKey = row.rowKey
+     val rowData = row.rowData
+     val logInfo = rowData.get("loginfo")
+     // val index = 1
+     // val loop = new Breaks
+     // loop.breakable {
+     //   while(true) {
+     //     val get = new Get(Bytes.toBytes(rowKey))
+     //     if (table.exists(get)) {
+     //       rowKey = rowKey + StringUtils.leftPad(String.valueOf(index), 2, "0")
+     //     } else {
+     //       loop.break()
+     //     }
+     //   }
+     // }
+     
+     val put = new Put(Bytes.toBytes(rowKey))
+     put.addColumn(Bytes.toBytes("loginfo"), Bytes.toBytes("content"), Bytes.toBytes(logInfo.get("content")))
+     put.addColumn(Bytes.toBytes("loginfo"), Bytes.toBytes("level"), Bytes.toBytes(logInfo.get("level")))
+     (new ImmutableBytesWritable, put)
+   }
 }
+
+case class HbaseTableRow(rowKey: String, rowData: Map[String, Map[String, String]])
