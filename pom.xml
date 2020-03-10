@@ -11,6 +11,8 @@
     <properties>
         <spark.version>2.1.0</spark.version>
         <scala.version>2.11</scala.version>
+        <hbase.version>1.0.2</hbase.version>
+        <hive.version>3.1.0</hive.version>
     </properties>
 
     <dependencies>
@@ -23,6 +25,31 @@
             <groupId>org.apache.hadoop</groupId>
             <artifactId>hadoop-mapreduce-client-core</artifactId>
             <version>2.7.2</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.hadoop.hbase</groupId>
+            <artifactId>hbase-client-${hbase.version}</artifactId>
+            <version>${hbase.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.hadoop.hbase</groupId>
+            <artifactId>hbase-common-${hbase.version}</artifactId>
+            <version>${hbase.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.hadoop.hbase</groupId>
+            <artifactId>hbase-server-${hbase.version}</artifactId>
+            <version>${hbase.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.hbase</groupId>
+            <artifactId>hbase-spark</artifactId>
+            <version>2.0.0-alpha-1</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.hive</groupId>
+            <artifactId>hive-exec</artifactId>
+            <version>${hive.version}</version>
         </dependency>
 
         <dependency>
@@ -93,6 +120,26 @@
             <groupId>org.apache.flink</groupId>
             <artifactId>flink-streaming-scala_2.11</artifactId>
             <version>1.9.1</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.kafka</groupId>
+            <artifactId>kafka_${scala.version}</artifactId>
+            <version>1.1.0</version>
+        </dependency>
+        <dependency>
+            <groupId>org.elasticsearch</groupId>
+            <artifactId>elasticsearch</artifactId>
+            <version>6.7.1</version>
+        </dependency>
+        <dependency>
+            <groupId>org.elasticsearch</groupId>
+            <artifactId>elasticsearch-hadoop</artifactId>
+            <version>6.7.1</version>
+        </dependency>
+        <dependency>
+            <groupId>org.elasticsearch.client</groupId>
+            <artifactId>transport</artifactId>
+            <version>6.7.1</version>
         </dependency>
     </dependencies>
 
