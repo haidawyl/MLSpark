@@ -12,7 +12,7 @@
         <spark.version>2.1.0</spark.version>
         <scala.version>2.11</scala.version>
         <hbase.version>1.0.2</hbase.version>
-        <hive.version>3.1.0</hive.version>
+        <hive.version>3.1.1</hive.version>
     </properties>
 
     <dependencies>
